@@ -1,0 +1,145 @@
+\documentclass{article}
+\usepackage{amsmath}
+
+\begin{document}
+\title{Overview of Residuals in Linear Models and GLMs}
+\maketitle
+\section{Raw Residuals}
+\subsection{In Short}
+The difference between the observed value \(Y_i\) and the predicted value \(\hat{Y}_i\) for each observation \(i\).
+
+\subsection{Formal Definition}
+\[ e_i = Y_i - \hat{Y}_i \]
+
+\subsection{Why Use this kind of Residuals?}
+Raw residuals are the most straightforward and intuitive measure of the error in prediction. They are essential for assessing the fit of the model, with smaller residuals indicating a better fit.
+
+\subsection{When to use this kind of residuals?}
+Use raw residuals for initial model diagnosis and understanding the basic discrepancies between the observed and predicted values.
+
+\section{Standardized Residuals}
+\subsection{In Short}
+The raw residuals divided by the true standard deviation of the residuals. As the true standard deviation is rarely known, a standardized residual is almost never used.
+
+\subsection{Formal Definition}
+\[ r_{standardized} = \frac{e_i}{\sigma_{\epsilon}} \]
+Note: \(\sigma_{\epsilon}\) represents the true standard deviation of the residuals, which is rarely known.
+
+\subsection{Why Use this kind of Residuals?}
+Standardized residuals are used to compare the relative sizes of residuals in units of the standard deviation. They are theoretically appealing when the true standard deviation is known.
+
+\subsection{When to use this kind of residuals?}
+Standardized residuals are rarely used in practice due to the unavailability of the true standard deviation of the residuals. However, if known, they might be used for more refined diagnostic analysis.
+
+\section{Internally Studentized Residuals}
+\subsection{In Short}
+The raw residuals divided by an estimate of the standard deviation of the residuals, known as an internally studentized residual.
+
+\subsection{Formal Definition}
+\[ r_{internal} = \frac{e_i}{s_{(i)}} \]
+Note: \(s_{(i)}\) represents the estimated standard deviation of the residuals.
+
+\subsection{Why Use this kind of Residuals?}
+Internally studentized residuals are used because they provide a measure of the residual relative to the variability in the residuals. They are scaled so that they have a roughly constant variance, making them useful for identifying outliers.
+
+\subsection{When to use this kind of residuals?}
+Internally studentized residuals are used for diagnostic checking in regression analysis, especially for identifying outliers and influence points.
+
+\section{Externally Studentized Residuals}
+\subsection{In Short}
+Similar to internally studentized residuals, except that the estimate of the standard deviation of the residuals is calculated from a regression leaving out the observation in question.
+
+\subsection{Formal Definition}
+\[ r_{external} = \frac{e_i}{s_{(-i)}} \]
+Note: \(s_{(-i)}\) represents the estimated standard deviation of the residuals, leaving out the \(i\)th observation.
+
+\subsection{Why Use this kind of Residuals?}
+Externally studentized residuals are particularly useful for identifying outliers and influential data points, as they take into account the influence of each data point on the model's fit.
+
+\subsection{When to use this kind of residuals?}
+Use externally studentized residuals when you are specifically interested in the influence of individual observations on the overall model fit, especially in the context of outlier detection and influence analysis.
+
+\section{Pearson Residuals}
+\subsection{In Short}
+The raw residual divided by the standard deviation of the response variable (the y variable) rather than of the residuals.
+
+\subsection{Formal Definition}
+\[ r_{pearson} = \frac{Y_i - \mu_i}{\sqrt{V(\mu_i)}} \]
+Note: \(\mu_i\) is the mean predicted by the model, and \(V(\mu_i)\) is the variance function.
+
+\subsection{Why Use this kind of Residuals?}
+Pearson residuals are used for variance stabilization and normalization, making them more uniformly interpretable across different values of predictors, especially in the context of GLMs with non-constant variance.
+
+\subsection{When to use this kind of residuals?}
+Use Pearson residuals when dealing with GLMs and when the outcome variance is not constant or when the model includes non-normal distributions. They are crucial for standardized residual analysis and model diagnostics.
+\newline
+Note that $\sum r_{P_i}^2$ is the Pearson goodness-of-fit statistic
+$$
+X^2(y)=\sum_{i=1}^n \frac{\left(y_i-\widehat{\mu}_i\right)^2}{V\left(\widehat{\mu}_i\right)}
+$$
+and $\frac{X^2(Y)}{\phi} \sim \chi_{n-p}^2$, for example in the binomial model with large $m_i$, but again, the chi-squared approximation does not apply for the Bernoulli model with $m_i=1$
+
+Standardised Pearson are on a fixed scale, can potentially identify misfitting observations easily.
+
+
+\section{Deviance Residuals}
+\subsection{In Short}
+A type of residual used specifically in the context of GLMs for model comparison and goodness-of-fit testing.
+
+\subsection{Formal Definition}
+The formal definition of deviance residuals would depend on the specific GLM and link function used. Generally, it involves a transformation of the likelihood ratio.
+These are defined as $r_{D_i}$ so that $\sum r_{D_i}^2=D(y)=\sum d_i$.
+Let, for $i=1, \ldots, n$,
+$$
+d_i=2\left(\ell_i\left(\widehat{\theta}_i^{(s)} ; y_i\right)-\ell_i\left(\widehat{\beta} ; y_i\right)\right)
+$$
+so that the scaled deviance of the model is
+$$
+D(y)=\sum_{i=1}^n d_i .
+$$
+
+A poorly fitting observation will make a large contribution to the deviance. We have $d_i \geq 0$ and larger $d_i$ are observations in greater conflict with the rest of the data. The deviance residuals are defined to be
+$$
+r_{D_i}=\operatorname{sign}\left(y_i-\widehat{\mu}_i\right) \sqrt{d_i}
+$$
+where $\operatorname{sign}\left(y_i-\widehat{\mu}_i\right)$ is +1 if $\left(y_i-\widehat{\mu}_i\right)>0$, and -1 if $\left(y_i-\widehat{\mu}_i\right)<0$.
+\subsection{Why Use this kind of Residuals?}
+Deviance residuals are particularly useful for comparing nested models and assessing the goodness of fit in GLMs, as they are related to the likelihood of the model.
+
+\subsection{When to use this kind of residuals?}
+Use deviance residuals when comparing models or assessing the fit of a GLM, especially for hypothesis testing and model selection.
+Deviance residuals tend to be preferred as they tend to have less skewed distributions and often appear slightly closer to a standard normal distribution.
+
+
+\subsubsection{Difference between studentized residuals and scaled residuals}
+\subsubsection{Studentized Residuals}
+Standardized residuals are raw residuals that have been divided by their estimated standard deviation. In the context of linear regression, the standardized residual for the \(i\)th observation is calculated as:
+
+\[ r_i^* = \frac{e_i}{s_e\sqrt{1 - h_{ii}}} \]
+
+Where:
+\begin{itemize}
+    \item \( e_i \) is the raw residual (the difference between the observed and predicted value).
+    \item \( s_e \) is the estimated standard deviation of the residuals.
+    \item \( h_{ii} \) is the leverage of the \(i\)th observation (the \(i\)th diagonal element of the hat matrix \(H\)).
+\end{itemize}
+
+The denominator adjusts for the fact that not all residuals have the same variance (due to the leverage effect). Observations with high leverage have less variance in their residuals, and this adjustment ensures that the standardized residuals are comparable across all observations.
+
+\subsubsection{Scaled Residuals}
+Scaled residuals are generally used in the context of generalized linear models (GLMs) and are the raw residuals divided by the square root of the variance function, which depends on the mean response for each observation. They are particularly useful when the variance of the residuals is not constant (heteroscedasticity). In GLMs, the scaled residual for the \(i\)th observation might be calculated as:
+
+\[ r_i^s = \frac{e_i}{\sqrt{V(\mu_i) \phi}} \]
+
+Where:
+\begin{itemize}
+    \item  \( e_i \) is the raw residual.
+    \item \( V(\mu_i) \) is the variance function evaluated at the fitted mean \(\mu_i\).
+    \item \( \phi \) is the dispersion parameter (in models where this is assumed to be non-unity).
+\end{itemize}
+
+In some contexts, "scaled residuals" might also refer to residuals that have been scaled by a robust estimate of their standard deviation, which is sometimes done to mitigate the influence of outliers.
+
+\subsubsection{Summary}
+The key difference lies in the way the standard deviation or the scaling factor is computed. Standardized residuals are normalized by an estimate that is constant for all residuals in linear models, while scaled residuals are normalized by an estimate that can vary for each residual, which is often the case in generalized linear models. The specific use of these terms can vary, and the definitions can overlap depending on the context and the particular statistical package or literature you are referring to. It's always important to understand the calculations specific to the context in which you're working.
+\end{document}

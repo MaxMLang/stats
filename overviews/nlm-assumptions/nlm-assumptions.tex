@@ -1,0 +1,90 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+
+\title{NLM_Assumptions}
+\author{Max Lang}
+\date{January 2024}
+
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\begin{document}
+
+\section*{LS Estimator Properties}
+
+\textbf{No Assumptions for Residuals}
+\begin{enumerate}
+    \item $\hat{\beta}$ is unbiased
+    \item $\operatorname{Cov}(\hat{\beta}) = \sigma^2(\mathbf{X}^{\top} \mathbf{X})^{-1}$
+    \item LSE has Minimal Variance (Gauss-Markov Theorem)
+\end{enumerate}
+
+\textbf{Normal Distribution of Residuals:} $\epsilon \sim \mathcal{N}(0, \sigma^2)$
+\begin{enumerate}
+    \item If $\epsilon_i \sim \mathcal{N}(0, \sigma^2)$ independently, then OLS is BLUE
+    \item $y \sim \mathcal{N}(X\beta, \sigma^2 I)$
+    \item $\widehat{\beta} \sim \mathcal{N}(\beta, \sigma^2(X^{\prime} X)^{-1})$
+    \item $\frac{(\hat{\beta}-\beta)^{\prime}(X^{\prime} X)(\hat{\beta}-\beta)}{\sigma^2} \sim \chi_p^2$
+\end{enumerate}
+
+\section*{Asymptotic properties of LSE}
+\begin{itemize}
+    \item If normally distributed, then it is exact
+    \begin{enumerate}
+        \item MLE for $\hat{\sigma}^2$ and $\hat{\beta}_n$ is consistent (but biased)
+        \item $\sqrt{n}(\hat{\beta}-\beta) \stackrel{d}{\rightarrow} \mathcal{N}(0,1)$
+    \end{enumerate}
+\end{itemize}
+
+\section*{Properties of Residuals}
+\textbf{Without distributional assumptions:}
+\begin{enumerate}
+    \item $\mathbb{E}(\hat{\epsilon})=0$
+    \item $\operatorname{Var}(\hat{\epsilon}_i) = \sigma^2(1-h_{ii})$
+    \item $\operatorname{Cov}(\hat{\epsilon}) = \sigma^2(I-H)$
+\end{enumerate}
+
+\textbf{With Normal assumption:}
+\begin{enumerate}
+    \item $\hat{\epsilon} \sim \mathcal{N}(0, \sigma^2(I-H))$
+    \item $\frac{\hat{\epsilon}^{\prime} \hat{\epsilon}}{\sigma^2} = (n-p) \frac{\hat{\sigma}^2}{\sigma^2} \sim \chi_{n-p}^2$
+    \item Independence: $\hat{\epsilon}^{\top} \hat{\epsilon} \Perp \hat{\beta}$ (up to a point, possibly indicating a note on approximation)
+\end{enumerate}
+
+\section*{Maximum likelihood estimation (MLE)}
+MLE can be performed when the distribution of the error terms is known to belong to a certain parametric family $f_\theta$ of probability distributions and assuming random sampling.
+
+If $\mathbb{E}[\epsilon]=0, \operatorname{Var}(\epsilon_i)=\sigma^2<\infty$, and $\operatorname{Cov}(\epsilon_i, \epsilon_j)=0$ ) hold, OLS is the BLUE by GM
+
+\[
+\begin{array}{|l|c|c|c|c|c|}
+\hline & \text{1.)} & \text{2.)} & \text{3.)} & \text{4.)} & \text{5.)} \\
+\hline \text{KQ-Schätzer} & \mathrm{x} & & & & \\
+\hline \text{ML-Schätzer} & \mathrm{x} & \mathrm{x} & \mathrm{x} & \mathrm{x} & \mathrm{x} \\
+\hline E(\hat{\beta})=\beta & \mathrm{x} & \mathrm{x} & & & \\
+\hline \hat{\beta} \sim N\left(\beta, \sigma^2\left(X^{\prime} X\right)^{-1}\right) & \mathrm{x} & \mathrm{x} & \mathrm{x} & \mathrm{x} & (\mathrm{x})^* \\
+\hline \begin{array}{l}
+\text{Konfidenintervalle} \\
+\text{(von Regressionskoeffizienten, Prädiktionen, ...)}
+\end{array} & \mathrm{x} & \mathrm{x} & \mathrm{x} & \mathrm{x} & (\mathrm{x})^* \\
+\hline \begin{array}{l}
+\text{Prädiktionsintervalle} \\
+\text{(von Prädiktionen, ...)}
+\end{array} & \mathrm{x} & \mathrm{x} & \mathrm{x} & \mathrm{x} & \mathrm{x} \\
+\hline \text{(adj.)} R^2 & x & & & & \\
+\hline
+\end{array}
+\]
+
+\begin{enumerate}
+    \item $Y=X \beta+\epsilon$
+    \item $E\left(\epsilon_i\right)=0$
+    \item $\operatorname{Var}\left(\epsilon_i\right)=\sigma^2$
+    \item $\epsilon_i$ paarweise unabhängig
+    \item $\epsilon_i \sim N\left(0, \sigma^2\right)$
+\end{enumerate}
+
+
+
+\end{document}

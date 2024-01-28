@@ -1,0 +1,44 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+
+\begin{document}
+
+\section*{Jeffreys-Lindley Paradox}
+
+The Jeffreys-Lindley paradox highlights a fundamental difference between two schools of statistical inference: Bayesian and frequentist. It specifically arises in the context of hypothesis testing and can lead to situations where these two approaches give seemingly contradictory results.
+
+\subsection*{Frequentist Approach:}
+\begin{enumerate}
+    \item \textbf{Fixed Threshold:} In frequentist statistics, you typically set a threshold for significance (like a p-value of 0.05) before the experiment. If the observed data produces a p-value less than this threshold, you reject the null hypothesis.
+    \item \textbf{Data-Driven:} The decision is entirely based on the observed data and the pre-set threshold.
+\end{enumerate}
+
+\subsection*{Bayesian Approach:}
+\begin{enumerate}
+    \item \textbf{Prior Beliefs:} Bayesian statistics incorporates prior beliefs or knowledge before observing the data (the prior) along with the observed data (the likelihood) to update beliefs (the posterior).
+    \item \textbf{Evidence Weight:} In Bayesian hypothesis testing, the strength of evidence is often measured by the Bayes Factor. As more data is collected, the Bayes Factor might strongly favor the null hypothesis, even if the p-value is small, especially if the prior is skeptical of large effects.
+\end{enumerate}
+
+\subsection*{The Paradox:}
+Now, imagine you are testing a hypothesis — perhaps you're trying to detect a very small effect in a large dataset. Here's where the paradox kicks in:
+\begin{itemize}
+    \item \textbf{Frequentist Outcome:} With enough data, even a tiny effect can become statistically significant in a frequentist view. You might end up rejecting the null hypothesis because your p-value falls below the threshold due to the large sample size, suggesting the effect is real.
+    \item \textbf{Bayesian Outcome:} From a Bayesian perspective, if the prior belief is that the effect is likely to be zero or near-zero, observing a small effect, even if statistically significant, might not be enough to sway the belief. The prior may heavily weigh against the alternative hypothesis, especially if the expected effect size is tiny. Thus, the Bayes Factor might favor the null hypothesis, leading you to maintain it.
+\end{itemize}
+
+\subsection*{Intuitive Scenario:}
+Think of it like hearing a faint noise at night and trying to decide if it's just the wind or something more significant:
+\begin{itemize}
+    \item \textbf{Frequentist:} If you're set on proving it's not the wind, you might focus on every little sound, and with enough "data" of tiny creaks and groans, conclude it must be something else. You're looking for evidence to reject the "null hypothesis" (it's just the wind).
+    \item \textbf{Bayesian:} However, if you historically know that these sounds are usually just the wind (prior belief), and the noise isn't much louder than usual, you might conclude it's probably still just the wind, despite the new "data" of noises.
+\end{itemize}
+
+\subsection*{Why Is It a Paradox?}
+It's paradoxical because the same set of data can lead a Bayesian to accept the null hypothesis while leading a frequentist to reject it. This isn't necessarily an error in either method but a fundamental difference in approach. The paradox becomes more pronounced with large sample sizes. As you collect more data, frequentist methods might suggest increasingly that small effects are significant, while Bayesian methods, anchored by a prior skeptical of large effects, might not be swayed.
+
+\subsection*{Conclusion:}
+The Jeffreys-Lindley paradox is essentially about how statistical evidence is interpreted under different paradigms. It's a crucial consideration in fields where deciding between hypotheses is based on statistical evidence, and it highlights the importance of understanding the underlying assumptions and implications of whichever statistical approach one uses.
+
+\end{document}
