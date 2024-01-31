@@ -1,5 +1,8 @@
 \documentclass{article}
 \usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
 
 \title{Transformation \& Simulation Methods}
 \author{Max Lang}
@@ -123,4 +126,81 @@ Note that to implement rejection sampling, we need to implement a mechanism to e
 \newline
 Indeed $\mathbb{P}(U \leq \alpha)=\alpha$ when $U \sim \mathcal{U}_{[0,1]}$, so that the above scheme will "do this" with probability $\alpha$.
 
+
+\subsection{Importance Sampling}
+In the rejection sampling algorithm, we simulate from a distribution $\pi$ by sampling from a proposal distribution $q$ and rejecting some of the proposed values. Importance sampling uses another correction scheme based on \textbf{reweighting}. In this context the proposal $q$ is also known as an importance distribution.
+
+\subsubsection{Standard Importance Sampling}
+
+Let \( q \) and \( \pi \) be two probability density functions on \( \mathcal{X} \) such that \( \pi(x) > 0 \) implies \( q(x) > 0 \). Then, for any set \( A \) such that \( \pi(A) > 0 \)
+
+\[
+\pi(A) = \int_A \frac{\pi(x)}{q(x)}q(x)dx = \int_A w(x)q(x)dx
+\]
+
+where \( w: \mathcal{X} \rightarrow \mathbb{R}^+ \) is the so-called importance weight function: \( w: x \mapsto \frac{\pi(x)}{q(x)} \). This identity can be obviously generalized to the expectation of any function. Assume \( \pi(x)\phi(x) > 0 \) implies \( q(x) > 0 \), then
+
+\[
+I = \mathbb{E}_{\pi}[\phi(X)] = \int_{\mathcal{X}} \phi(x) \pi(x) dx = \int_{\mathcal{X}} \phi(x) w(x) q(x) dx = \mathbb{E}_q[\phi(X)w(X)].
+\]
+
+Now let \( X_1, \ldots, X_n \) be a sample of independent random variables distributed according to \( q \), then the estimator
+
+\[
+\hat{I}_{\text{IS}} = \frac{1}{n} \sum_{i=1}^{n} \phi(X_i)w(X_i)
+\]
+
+is consistent through the strong law of large numbers if \( \mathbb{E}_q[|\phi(X)|w(X)] < \infty \). We also obtain the following results.
+
+\textbf{Bias and Variance of Standard Importance Sampling}
+\begin{itemize}
+    \item[(a)] \( \mathbb{E}_q \left[ \hat{I}_{\text{IS}} \right] = I \),
+    \item[(b)] \( \text{Var}_q \left( \frac{\hat{I}_{\text{IS}}}{n} \right) = \frac{1}{n} \text{Var}_q(\phi(X)w(X)) \) and if \( \sigma^2_{\text{IS}}(\phi) = \text{Var}_q(\phi(X)w(X)) < \infty \),
+    \item[(c)] \( \sqrt{n} \left( \frac{\hat{I}_{\text{IS}}}{n} - I \right) \rightarrow \mathcal{N}(0, \sigma^2_{\text{IS}}(\phi)) \).
+\end{itemize}
+
+\subsubsection{Normalised Importance Sampling}
+
+In practice, standard importance sampling has limited applications as it requires exact evaluations of \( \pi(x) \), contrarily to rejection sampling where \( \pi(x) \) and \( q(x) \) only have to be evaluated up to some normalising constants. However there is an alternative version of importance sampling known as normalised importance sampling which bypasses this problem. Assume that whenever \( \pi(x) > 0 \) implies \( q(x) > 0 \), and that we can write \( \pi(x) = \tilde{\pi}(x)/Z_{\pi} \) and \( q(x) = \tilde{q}(x)/Z_q \), for some normalising constants \( Z_{\pi} \) and \( Z_q \). We introduce the unnormalised weight function
+
+\[
+\tilde{w}: x \mapsto \frac{\tilde{\pi}(x)}{\tilde{q}(x)} = w(x)\frac{Z_{\pi}}{Z_q}.
+\]
+
+Then, we can write
+
+\[
+I = \mathbb{E}_{\pi}[\phi(X)] = \int_{\mathcal{X}} \phi(x) \pi(x) dx = \int_{\mathcal{X}} \phi(x) \tilde{w}(x)q(x) dx = \int_{\mathcal{X}} \phi(x) w(x) \tilde{q}(x) dx = \mathbb{E}_q[\phi(X)\tilde{w}(X)].
+\]
+
+where the importance weight function only involves the unnormalised probability density functions \( \tilde{\pi} \) and \( \tilde{q} \).
+
+Now, let \( X_1, \ldots, X_n \) be a sample of independent random variables distributed according to \( q \). The estimator
+
+\[
+\hat{I}_{\text{NIS}} = \frac{\sum_{i=1}^{n} \phi(X_i)\tilde{w}(X_i)}{\sum_{i=1}^{n} \tilde{w}(X_i)}
+\]
+
+is consistent through the strong law of large numbers as long as \( \mathbb{E}_q[|\phi(X)|\tilde{w}(X)] < \infty \). The normalised importance sampling estimator \( \hat{I}_{\text{NIS}} \) is a ratio of two estimators, therefore we do not have simple expressions for its finite bias and variance. We can still obtain their asymptotic expression (i.e. as \( n \rightarrow \infty \)) using the delta method.
+
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{ox-hilary//simulation-methods//figures/NIS_dist.png}
+    \caption{Different importance proposal distributions to estimate the area under the red curve.  
+}
+    \label{fig:nis_dist}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{ox-hilary//simulation-methods//figures/NIS_burn_in.png}
+    \caption{Estimates of $I$ obtained after 1 to 1500 samples, using proposals $\pi$ (left), $q_1$ (middle) or $q_2$ (right). The grey shaded areas correpond to the range of 100 independent replications, and the black line represents the mean.}
+    \label{fig:nis_burn_in}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{ox-hilary//simulation-methods//figures/NIS_weights.png}
+    \caption{Sample weights obtained for 1000 realisations of $X_i$, using proposals $\pi$ (left), $q_1$ (middle) or $q_2$ (right).}
+    \label{fig:nis_weights}
+\end{figure}
 \end{document}

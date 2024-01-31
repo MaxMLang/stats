@@ -1,0 +1,418 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage[version=4]{mhchem}
+\usepackage{stmaryrd}
+\usepackage{bbold}
+
+\title{Elements of Markov Chains Theory}
+
+\begin{document}
+\maketitle
+
+
+\section{Discrete-time Stochastic Processes}
+A discrete-time $\mathbb{X}$-valued stochastic process is a process where, for each $t \in \mathbb{N}, X_{t}$ is a random variable taking values in some space $\mathbb{X}$. Typically, we will deal with either discrete spaces (such as a finite set like $\{1,2, \ldots, d\}$ for some $d \in \mathbb{N}$, or a countable set, like the set of integers $\mathbb{Z}$ ), or continuous spaces (such as $\mathbb{R}$ or $\mathbb{R}^{d}$ for some $d \in \mathbb{N}$ ). The space $\mathbb{X}$ is often called the state space. In order to characterize a discrete-time stochastic process, it is sufficient to know all of its finite dimensional distributions, that is, the joint distributions of the process at any collection of finitely many times. For a collection of times $\left(t_{1}, \ldots, t_{n}\right)$ and a collection of measurable sets of $\mathbb{X},\left(A_{t_{1}}, \ldots, A_{t_{n}}\right)$, the process is associated with the joint probability
+
+$$
+\mathbb{P}\left(X_{t_{1}} \in A_{t_{1}}, X_{t_{2}} \in A_{t_{2}}, \ldots, X_{t_{n}} \in A_{t_{n}}\right)
+$$
+
+We will focus here on the class of stochastic processes called "Markov", which are useful in the context of Monte Carlo methods. We will see that their specification only requires an "initial distribution" and a "transition probability" or "transition kernel", both of which are conceptually simple objects.
+
+\section{Discrete State Space Markov Chains}
+\subsection{Markov property}
+Let us first consider discrete state spaces, i.e. $|\mathbb{X}|$ is finite or countably infinite. We can assume, without loss of generality, that the state space $\mathbb{X}$ is $\mathbb{N}$. In this context, we can work with the probability of the process taking a particular value at a particular time $t$. . For any $t \in \mathbb{N}$, we always have the following decomposition, for a collection of points $\left(x_{1}, \ldots, x_{t}\right)$ in $\mathbb{X}$,
+
+$$
+\begin{aligned}
+\mathbb{P}\left(X_{1}\right. & \left.=x_{1}, X_{2}=x_{2}, \ldots, X_{t}=x_{t}\right) \\
+& =\mathbb{P}\left(X_{1}=x_{1}, X_{2}=x_{2}, \ldots, X_{t-1}=x_{t-1}\right) \mathbb{P}\left(X_{t}=x_{t} \mid X_{1}=x_{1}, X_{2}=x_{2}, \ldots, X_{t-1}=x_{t-1}\right) \\
+& =\mathbb{P}\left(X_{1}=x_{1}\right) \prod_{s=2}^{t} \mathbb{P}\left(X_{s}=x_{s} \mid X_{1}=x_{1}, \ldots, X_{s-1}=x_{s-1}\right)
+\end{aligned}
+$$
+
+From this decomposition, we can construct all of the finite dimensional distributions using simply the sum and product rules of probability. To simplify the process, we can assume that the distribution of $X_{s}$ given its "past" $\left(X_{1}, \ldots, X_{s-1}\right)$ depends only upon $X_{s-1}$; i.e. we have
+
+$$
+\mathbb{P}\left(X_{s}=x_{s} \mid X_{1}=x_{1}, \ldots, X_{s-1}=x_{s-1}\right)=\mathbb{P}\left(X_{s}=x_{s} \mid X_{s-1}=x_{s-1}\right) .
+$$
+
+The fact that $X_{t}$ depends only on $X_{t-1}$ is often called the "Markov property".
+
+When dealing with discrete state spaces, it is often convenient to associate each probability distribution with a row vector, with non-negative entries and summing to one. Now, given a random variable $X$ on $\mathbb{X}$, we say that $X$ has distribution $\mu$ for some vector $\mu$ (with non-negative entries and summing to one), and we note:
+
+$$
+\forall x \in \mathbb{X} \quad \mathbb{P}(X=x)=\mu(x)
+$$
+
+\subsection{Homogeneous Markov Chains}
+Markov chains are called homogeneous when the conditional probabilities that do not depend on the time index, i.e.
+
+$$
+\forall x, y \in \mathbb{X} \quad \forall t, s \in \mathbb{N} \quad \mathbb{P}\left(X_{t}=y \mid X_{t-1}=x\right)=\mathbb{P}\left(X_{t+s}=y \mid X_{t+s-1}=x\right)
+$$
+
+In this setting, we can introduce the transition matrix $K(i, j)=K_{i j}=\mathbb{P}\left(X_{t}=j \mid X_{t-1}=i\right) . K$ is also referred to as the kernel of the Markov chain. If we call $\mu_{t}$ the distribution of $X_{t}, \mu_{t}(i)=\mathbb{P}\left(X_{t}=i\right)$, then by combining (11)-(2)-(3), the joint distribution of the chain over any finite time steps satisfies
+
+$$
+\mathbb{P}\left(X_{1}=x_{1}, X_{2}=x_{2}, \ldots, X_{t}=x_{t}\right)=\mu_{1}\left(x_{1}\right) \prod_{s=2}^{t} K_{x_{s-1} x_{s}}
+$$
+
+\subsection{Transition Matrix}
+Define $K^{n}$ with entries $K^{n}(i, j)$, the matrix of transition from $i$ to $j$ in $n$ steps:
+
+$$
+K_{i j}^{n}=\mathbb{P}\left(X_{t+n}=j \mid X_{t-1}=i\right) .
+$$
+
+ \subsection{Chapman-Kolmogorov equation}
+
+$$
+K_{i j}^{m+n}=\sum_{k \in \mathbb{X}} K_{i k}^{m} K_{k j}^{n} .
+$$
+
+which proves that indeed $K^{n}$ is the $n^{\text {th }}$ matrix power of $K$, and hence the notation is consistent with standard linear algebra. For the marginal laws of $X_{t}$, we obtain the expression
+
+$$
+\mu_{t+1}(j)=\sum_{i \in \mathbb{X}} \mu_{t}(i) K_{i j}
+$$
+
+If $\mathbb{X}$ is finite, this is nothing else than a standard vector-matrix multiplication, hence we rewrite the equation as
+
+$$
+\mu_{t+1}=\mu_{t} K
+$$
+
+Similarly, we obtain $\mu_{t+n}=\mu_{t} K^{n}$.
+
+\subsection{Summary}
+\begin{itemize}
+    \item The distribution $\mu_{0}$ of $X_{0}$, called the "initial distribution", must be specified
+    \item Transition kernel $K$ must be specified, and it characterizes the law of $X_{t}$ given $X_{t-1}$, at any time $t$
+    \item The distribution $\mu_{0}$ and the transition $K$ completely define the Markov chain $\left(X_{t}\right)$, using the Chapman-Kolmogorov equation above and the fact that finite-dimensional joint distributions characterize stochastic processes, i.e. Kolmogorov extension theorem.
+\end{itemize}
+
+\section{Continuous State Space Markov Chains}
+\subsection{From discrete to continuous spaces}
+The concepts of reversibility and detailed balance are essentially unchanged from the discrete setting. It is necessary to consider integrals with respect to densities rather than sums over probability distributions, but no fundamental differences arise here. For instance we can introduce reversibility as follows.
+
+
+When facing with continuous state spaces, the main difficulty stems from the fact that the probability of any continuous random variable taking any particular value is zero. For example, if a random variable $X$ follows normal distribution, then for any $x \in \mathbb{R}, \mathbb{P}(X=\{x\})=0$. Hence, we cannot for instance refer to transition probabilities $\mathbb{P}\left(X_{t}=\{y\} \mid X_{t-1}=x\right)$. The Markov property (2) can still be defined on a continuous state space, as follows. We say that the process $\left(X_{t}\right)_{t \in \mathbb{N}}$ is a Markov chain if for any measurable set $A \subset \mathbb{X}:$
+
+$$
+\mathbb{P}\left(X_{t} \in A \mid X_{1}=x_{1}, X_{2}=x_{2}, \ldots, X_{t-1}=x_{t-1}\right)=\mathbb{P}\left(X_{t} \in A \mid X_{t-1}=x_{t-1}\right)
+$$
+
+It is often convenient to describe the distribution of a random variable $X$ over $\mathbb{X}$ in terms of some probability density function, $\mu: \mathbb{X} \rightarrow \mathbb{R}^{+}$which has the property that, if $X \sim \mu$, then we have for any measurable set $A$,
+
+$$
+\mathbb{P}(X \in A)=\int_{A} \mu(x) d x
+$$
+
+For homogeneous chains, we may describe the conditional probabilities of interest as a kernel function $K: \mathbb{X} \times \mathbb{X} \rightarrow \mathbb{R}$ which has the property that for all measurable sets $A \subset \mathbb{X}$ and all $x \in \mathbb{X}:$
+
+$$
+\mathbb{P}\left(X_{t} \in A \mid X_{t-1}=x\right)=\int_{A} K(x, y) d y:=K(x, A)
+$$
+
+that is conditional on $X_{t-1}=x, X_{t}$ is a random variable which admits a probability density function $y \mapsto K(x, y)$.
+
+Hence for any collection of measurable sets $A_{1}, A_{2}, \ldots, A_{t}$ the following holds:
+
+$$
+\mathbb{P}\left(X_{1} \in A_{1}, X_{2} \in A_{2}, \ldots, X_{t} \in A_{t}\right)=\int_{A_{1} \times \cdots \times A_{t}} \mu\left(x_{1}\right) \prod_{k=2}^{t} K\left(x_{k-1}, x_{k}\right) d x_{1} \cdots d x_{t}
+$$
+
+We can also define the $m$-step conditional distributions,
+
+$$
+\mathbb{P}\left(X_{t+m} \in A \mid X_{t}=x_{t}\right)=\int_{\mathbb{X}^{m-1} \times A} \prod_{k=t+1}^{t+m} K\left(x_{k-1}, x_{k}\right) d x_{t+1} \cdots d x_{t+m}
+$$
+
+and it is useful to define an $m$-step transition kernel in the same manner as in the discrete case. Here matrix multiplication is replaced by a convolution operation but the intuition remains the same; i.e. we can rewrite the expression above as
+
+$$
+\mathbb{P}\left(X_{t+m} \in A \mid X_{t}=x_{t}\right)=\int_{A} K^{m}\left(x_{t}, x_{t+m}\right) d x_{t+m}=: K^{m}\left(x_{t}, A\right)
+$$
+
+where
+
+$$
+K^{m}\left(x_{t}, x_{t+m}\right)=\int_{\mathbb{X}^{m-1}} \prod_{k=t+1}^{t+m} K\left(x_{k-1}, x_{k}\right) d x_{t+1} \cdots d x_{t+m-1}
+$$
+
+Denoting by $\mu_{t}$ the density of the marginal distribution of $X_{t}$, we obtain
+
+$$
+\mu_{t+m}(y)=\int_{\mathbb{X}} \mu_{t}(x) K^{m}(x, y) d x
+$$
+
+and, in terms of sets,
+
+$$
+\mu_{t+m}(A)=\mathbb{P}\left(X_{t+m} \in A\right)=\int_{A} \int_{\mathbb{X}} \mu_{t}(x) K^{m}(x, y) d x d y
+$$
+
+
+\section{Important Properties}
+\subsection{Definition Accessibility}
+A state $y$ is accessible from a state $x$, written " $x \rightarrow y$ ", if
+
+$$
+\inf \left\{t: \mathbb{P}\left(X_{t}=y \mid X_{1}=x\right)>0\right\}<\infty
+$$
+
+Note that this can be rewritten equivalently as $\inf \left\{t: K_{x y}^{t}>0\right\}<\infty$. In layman's terms, $x \rightarrow y$ means that starting from $x$, there is a positive probability of reaching $y$ at some finite time in the future, according to the Markov kernel $K$.
+\subsection{Definition Communication}
+Two states $x, y \in \mathbb{X}$ are said to communicate if and only if $x \rightarrow y$ and $y \rightarrow x$.
+
+These notions allow the study of the "communication structure" of a Markov chain, i.e. from which points it is possible to travel to, and back from. We now introduce a concept to describe the properties of the full state space, or significant parts of it, rather than individual states.
+\subsection{Definition Irreducibility (Discrete)}
+A Markov chain is said to be irreducible if all the states communicate, i.e. $\forall x, y \in \mathbb{X}: x \rightarrow y$. Given a probability distribution $\nu$ on $\mathbb{X}$, a Markov chain is said to be $\nu$-irreducible if every state with positive probability under $\nu$ communicates with every other such state:
+
+$$
+\forall x, y \in \operatorname{supp}(\nu): x \rightarrow y
+$$
+
+where $\operatorname{supp}(\nu)=\{x \in \mathbb{X}: \nu(x)>0\}$. A Markov chain is said to be strongly irreducible if any state can be reached from any other state, in only one step of the Markov chain. A Markov chain is said to be strongly $\nu$-irreducible if all states in supp $(\nu)$ may be reached in a single step from any other state in $\operatorname{supp}(\nu)$.
+
+This notion is important for the study of Markov chain Monte Carlo methods: indeed a Markov chain that is $\nu$-irreducible can explore the entire support of $\nu$, rather than being restricted to a subset of it. Thus, when we will introduce Markov chains to explore a particular distribution of interest $\pi$, we will carefully check whether the chains are $\pi$-irreducible.
+
+\subsection{Definition Irreducibility (Continuous)}
+Given a distribution $\mu$ over $\mathbb{X}$, a Markov chain is said to be $\mu$ irreducible if, for all points $x \in \mathbb{X}$ and all measurable sets $A$ such that $\mu(A)>0$, there exists some $t$ such that:
+
+$$
+K^{t}(x, A)>0
+$$
+
+If this condition holds with $t=1$, then the chain is said to be strongly $\mu$-irreducible.
+
+In practice, we will deal with $\pi$-irreducible Markov chains, where $\pi$ is the "target" distribution of interest. Periodicity for continuous space Markov chains can be introduced as follows.
+
+\section{Properties of States}
+\subsection{Periodicity (Discrete)}
+For a Markov chain with kernel $K$, a state $x$ has period $d(x)$ defined as:
+
+$$
+d(x)=\operatorname{gcd}\left\{s \geq 1: K_{x x}^{s}>0\right\}
+$$
+
+where "gcd" denotes the greatest common denominator. If a chain induces a state $x$ of period $d(x)>1$, it is said to have a cycle of length $d(x)$.
+\subsection{Periodicity (Continuous)}
+A $\mu$-irreducible Markov chain with transition kernel $K$ is said to be periodic, if there exists some partition of the state space, $\mathbb{X}_{1}, \ldots, \mathbb{X}_{d}$ for $d \geq 2$, i.e. $\forall i \neq j: \mathbb{X}_{i} \cap \mathbb{X}_{j}=\varnothing$ and $\cup_{i=1}^{d} \mathbb{X}_{i}=\mathbb{X}$, with the property
+
+$$
+\forall i, j, t, s: \mathbb{P}\left(X_{t+s} \in \mathbb{X}_{j} \mid X_{t} \in \mathbb{X}_{i}\right)=\left\{\begin{array}{ll}
+1 & j=i+s \bmod s \\
+0 & \text { otherwise. }
+\end{array} .\right.
+$$
+
+Otherwise the Markov chain is \textbf{aperiodic}.
+
+A Markov chain with a period $d \geq 2$ is such that the chain moves with probability 1 from set $\mathbb{X}_{1}$ to $\mathbb{X}_{2}, \mathbb{X}_{2}$ to $\mathbb{X}_{3} \ldots$ and $\mathbb{X}_{d-1}$ to $\mathbb{X}_{1}$ and $\mathbb{X}_{d}$ to $\mathbb{X}_{1}$. Hence the chain will visit a particular element of the partition with a period $d$.
+
+\subsection{Proposition 2.1.}
+All states that communicate have the same period, therefore all states have the same period if the Markov chain is irreducible.
+
+\subsection{Transience and Recurrence (Discrete)}
+ For a Markov chain, a state $x$ is termed transient if:
+
+$$
+\mathbb{E}_{x}\left(\eta_{x}\right)<\infty
+$$
+
+Otherwise the state is called recurrent and
+
+$$
+\mathbb{E}_{x}\left(\eta_{x}\right)=\infty
+$$
+
+For irreducible Markov chains, transience and recurrence are properties of the chain itself, rather than its individual states. if any state is transient (or recurrent) then all states have that property.
+
+\subsection{Transience and Recurrence (Continous)}
+For a $\mu$-irreducible Markov chain, a set $A \subset \mathbb{X}$ is recurrent if
+
+$$
+\forall x \in A \quad \mathbb{E}_{x}\left(\eta_{A}\right)=\infty
+$$
+
+$A$ set $A \subset \mathbb{X}$ is uniformly transient if there exists some $M<\infty$ such that:
+
+$$
+\forall x \in A \quad \mathbb{E}_{x}\left(\eta_{A}\right) \leq M
+$$
+
+$A$ set $A \subset \mathbb{X}$ is transient if it may be expressed as a countable union of uniformly transient sets, i.e.:
+
+$$
+\exists\left\{M_{i} \in \mathbb{R}\right\} \quad \exists\left\{B_{i} \subset \mathbb{X}\right\}_{i=1}^{\infty}: A \subset \cup_{i=1}^{\infty} B_{i} \quad \forall i \in \mathbb{N} \quad \forall x \in B_{i} \quad \mathbb{E}_{x}\left(\eta_{B_{i}}\right) \leq M_{i}<\infty
+$$
+
+A Markov chain is recurrent if the following two conditions are satisfied:
+
+\begin{itemize}
+  \item the chain is $\mu$-irreducible for some distribution $\mu$;
+  \item for every measurable set $A \subset \mathbb{X}$ such that $\mu(A)=\int_{A} \mu(x) d x>0, \mathbb{E}_{x}\left(\eta_{A}\right)=\infty$ for every $x \in A$.
+\end{itemize}
+
+The chain is transient if it is $\mu$-irreducible for some distribution $\mu$ and the entire space is transient.
+
+\section{Equilibrium}
+For Markov chain Monte Carlo methods, we will be particularly interested in Markov kernels admitting an invariant distribution.
+\subsection{Invariant Distribution (Discrete)}
+A distribution $\pi$ is said to be invariant or stationary for a Markov kernel, $K$, if $\pi K=\pi$.
+
+The invariant distribution $\pi$ of a Markov kernel $K$ is thus simply the left eigenvector with unit eigenvalue. If there exists $t$ such that $X_{t} \sim \pi$ where $\pi$ is a stationary distribution, then $X_{t+s} \sim \pi K^{s}=\pi$ for all $s \in \mathbb{N}$, i.e. the Markov chain then keeps the same marginal distribution $\pi$ forever. A Markov chain is said to be in its stationary regime once this has occurred.
+\textbf{The very remarkable property of \textbf{aperiodic}, \textbf{irreducible} Markov chains with an invariant distribution $\pi$, is that the marginal distribution of the chain $X_{t}$ converges to the invariant distribution $\pi$}. This is true for any starting state $x$ or starting distribution $\mu$. Hence the invariant distribution is also called the equilibrium distribution, or limiting distribution.
+
+\subsection{Invariant Distribution (Continuous)}
+ A probability distribution with density $\pi$ is said to be invariant or stationary for a Markov kernel $K$, if
+
+$$
+\forall y \in \mathbb{X} \quad \int_{\mathbb{X}} \pi(x) K(x, y) d x=\pi(y)
+$$
+
+A Markov kernel that admits an invariant probability distribution and that is $\mu$-irreducible for some $\mu$ is said to be positive recurrent. Then, it can be shown that the invariant probability distribution is unique. A slightly stronger form of recurrence is widely employed in the proof of many theoretical results which underlie Markov chain Monte Carlo. This form of recurrence is known as Harris recurrence.
+
+ \subsection{Harris Recurrence}
+ A set $A \subset \mathbb{X}$ is Harris recurrent if $\mathbb{P}_{x}\left(\eta_{A}=\infty\right)=1$ for every $x \in \mathbb{X}$. A Markov chain is Harris recurrent if it is $\mu$-irreducible and if every set $A$ such that $\mu(A)>0$ is Harris recurrent.
+
+ 
+\subsection{Convergence to equilibrium}
+Consider a Markov chain $\left(X_{t}\right)_{t \in \mathbb{N}}$ on a discrete space $\mathbb{X}$ that is aperiodic, irreducible and with an invariant distribution $\pi$. Let $\mu$ be any initial distribution on $\mathbb{X}$. Then
+
+$$
+\forall x \in \mathbb{X} \quad \mathbb{P}_{\mu}\left(X_{t}=x\right) \underset{t \rightarrow \infty}{ } \pi(x)
+$$
+
+\subsection{Detailed Balance (Discrete)}
+A Markov kernel $K$ satisfies the detailed balance condition for a distribution $\pi$ if
+
+$$
+\forall x, y \in \mathbb{X} \quad \pi(x) K_{x y}=\pi(y) K_{y x}
+$$
+\subsection{Detailed Balance (Continous)}
+A Markov kernel satisfies the so-called detailed balance condition for some distribution of density $\pi$, if
+
+$$
+\forall x, y \in \mathbb{X}: \pi(x) K(x, y)=\pi(y) K(y, x)
+$$
+
+The the following holds:
+
+\begin{itemize}
+  \item the distribution $\pi$ is invariant for the kernel $K$,
+  \item the chain is reversible with respect to $\pi$.
+\end{itemize}
+
+\subsection{Detailed balance implies an invariant distribution}
+If a Markov kernel $K$ satisfies the detailed balance condition for $\pi$, then $\pi$ is invariant for $K$.
+
+\subsection{Time-reversal Markov chain}
+Consider an irreducible Markov chain $\left(X_{t}\right)_{t \in \mathbb{N}}$, with kernel $K$ and invariant distribution $\pi$. Assume that $X_{1} \sim \pi$, i.e. the chain is started at stationarity. Define $Y_{t}=X_{T-t}$ for some $T \geq 1$. Then $\left(Y_{t}\right)_{0 \leq t \leq T}$ is an irreducible Markov chain, with invariant distribution $\pi$ and with initial distribution also $\pi$, and its transition kernel $\hat{K}$ is given by
+
+$$
+\forall x, y \in \mathbb{X} \quad \pi(x) K_{x y}=\pi(y) \hat{K}_{y x} .
+$$
+
+The chain $\left(Y_{t}\right)$ is called the time-reversal chain of $\left(X_{t}\right)$.
+
+\subsection{Reversibility (Discrete}
+A irreducible Markov chain $\left(X_{t}\right)_{t \in \mathbb{N}}$, with kernel $K$ and invariant distribution $\pi$, is said to be reversible (with respect to $\pi$ ) if its transition kernel $K$ is equal to the transition kernel $\hat{K}$ of its time-reversal chain, in other words, at stationarity we have
+
+$$
+\forall x, y \in \mathbb{X} \quad \mathbb{P}\left(X_{t}=x \mid X_{t+1}=y\right)=\mathbb{P}\left(X_{t}=x \mid X_{t-1}=y\right)
+$$
+
+Numerous Markov chains that we will study later on are reversible. Reversibility is typically verified by checking the detailed balance condition as discussed above.
+
+\subsection{Reversibility (Continuous)}
+A Markov kernel $K$ is reversible with respect to $\pi$ if
+
+$$
+\forall f: \mathcal{B}\left(\mathbb{X}^{2} \rightarrow \mathbb{R}\right) \quad \iint f(x, y) \pi(d x) K(x, d y)=\iint f(y, x) \pi(d x) K(x, y)
+$$
+
+where $\mathcal{B}\left(\mathbb{X}^{2} \rightarrow \mathbb{R}\right)$ refers to the bounded functions measurable functions $f$ from $\mathbb{X}^{2}$ to $\mathbb{R}$.
+
+
+\subsection{Detailed balance implies reversibility}
+If a Markov chain has a transition kernel $K$ satisfying the detailed balance condition for some distribution $\pi$ , then the chain is reversible with respect to $\pi$.
+
+
+
+
+
+
+
+\section{Selected Convergence Results}
+\subsection{A Simple Ergodic Theorem}
+If $K$ is a $\pi$-irreducible $\mathbb{X}$-valued Markov kernel with stationary distribution $\pi$, then almost surely (i.e. with probability one), for any integrable function $\phi: \mathbb{X} \rightarrow \mathbb{R}:$
+
+$$
+\lim _{t \rightarrow \infty} \frac{1}{t} \sum_{i=1}^{t} \phi\left(X_{i}\right)=\int_{\mathbb{X}} \phi(x) \pi(x) d x
+$$
+
+for $\pi$-almost all starting values $x$ (i.e. for any $x$ except for some set $\mathcal{N}$ such that $\int_{\mathcal{N}} \pi(x) d x=0$ ).
+
+\subsection{A Stronger Ergodic Theorem}
+If $K$ is a $\pi$-invariant, Harris recurrent Markov chain with stationary distribution $\pi$, then almost surely, for any integrable function $\phi: \mathbb{X} \rightarrow \mathbb{R}$ :
+
+$$
+\lim _{t \rightarrow \infty} \frac{1}{t} \sum_{i=1}^{t} \phi\left(X_{i}\right)=\int_{\mathbb{X}} \phi(x) \pi(x) d x
+$$
+
+for all starting values $x$.
+
+\subsection{Theorem 4.3}
+ Suppose the kernel $K$ is $\pi$-irreducible, $\pi$-invariant and aperiodic. Then, we have
+
+$$
+\lim _{t \rightarrow \infty} \int_{\mathbb{X}}\left|K^{t}(x, y)-\pi(y)\right| d y=0
+$$
+
+for $\pi$-almost all starting value $x$.
+
+Laws of large numbers for stochastic processes are also called "ergodic theorems", the most famous one being Birkhoff ergodic theorem, which generalizes the above theorems. Before stating a central limit theorem, we mention different definitions of ergodicity.
+
+\subsection{Geometric Ergodicity}
+A $\pi$-invariant, Harris recurrent Markov chain with stationary distribution $\pi$ is geometrically ergodic if there exists a real $\rho<1$ and a non-negative function $M: \mathbb{X} \rightarrow \mathbb{R}^{+}$, such that for all measurable set $A$,
+
+$$
+\left|K^{n}(x, A)-\pi(A)\right| \leq M(x) \rho^{n} .
+$$
+
+\textbf{Geometric ergodicity is thus about convergence to equilibrium}, with \textbf{a specific geometric rate}. The bound still depends on the starting point $x$. Uniform ergodicity is a stronger property.
+
+\subsection{Uniform Ergodicity}
+ A $\pi$-invariant, Harris recurrent Markov chain with stationary distribution $\pi$ is geometrically ergodic if there exists a real $\rho<1$ and a real $M>0$, such that for all measurable set $A$,
+
+$$
+\left|K^{n}(x, A)-\pi(A)\right| \leq M \rho^{n} .
+$$
+
+Under regularity conditions, given e.g. in Jones, 2004, it is possible to obtain a central limit theorem for the ergodic averages of a Harris recurrent, $\pi$-invariant Markov chain, and a function $\phi: \mathbb{X} \rightarrow \mathbb{R}$ which has at least two finite moments (depending upon the combination of regularity conditions assumed, it may be necessary to have a finite moment of order $2+\delta)$. It can be proved that every reversible, geometrically ergodic, stationary Markov chain satisfies a central limit theorem, which is why geometric ergodicity was introduced above as an intermediate concept.
+
+\subsection{A Central Limit Theorem} For a Harris recurrent, $\pi$-invariant Markov chain, and a function $\phi: \mathbb{X} \rightarrow \mathbb{R}$ satisfying enough regularity conditions,
+
+$$
+\sqrt{t}\left[\frac{1}{t} \sum_{i=1}^{t} \phi\left(X_{i}\right)-\int_{\mathbb{X}} \phi(x) \pi(x) d x\right] \underset{t \rightarrow \infty}{D} \mathcal{N}\left(0, \sigma^{2}(\phi)\right),
+$$
+
+where
+
+$$
+\sigma^{2}(\phi)=\mathbb{V}\left[\phi\left(X_{1}\right)\right]+2 \sum_{k=2}^{\infty} \mathbb{C} o v\left[\phi\left(X_{1}\right), \phi\left(X_{k}\right)\right]
+$$
+
+The variance and covariance in the expression above are with respect to the distribution $\pi$ of the Markov chain in its stationary regime.
+
+
+
+
+\end{document}
