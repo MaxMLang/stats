@@ -2,7 +2,6 @@
 \usepackage{graphicx} % Required for inserting images
 \usepackage{amsmath}
 \title{Bayes Methods}
-\author{Max Lang}
 \date{January 2024}
 
 \begin{document}
@@ -160,7 +159,7 @@ $$
 
 \textbf{The problem of model selection and hypothesis testing are formally the same thing in Bayesian  inference. If the hypothesis is an explicit statement about the value of the parameter then this can  be expressed by choosing priors that express the belief represented in the hypotheses. However the  setup allows us to compare any two generative models that model the same data. }
 
-\subsubsection{How to do model selection}
+\subsubsection{How to do model selection / Bayes Factor}
 
 Suppose we choose the model with the largest posterior probability as above. If $m$ and $m^{\prime}$ are two models we favor $m$ if
 $$
@@ -171,7 +170,20 @@ The posterior odds $A_{m, m^{\prime}}$ have a simple meaning. M\textbf{odel $m$ 
 $$
 B_{r m, r m^{\prime}}=p(y \mid m) / p\left(y \mid m^{\prime}\right)
 $$
+
 is equal to $A_{m, m^{\prime}}$ if $\pi_M(m)=\pi_M\left(m^{\prime}\right)$, ie, if the prior weighting is equal. The Bayes factor\textbf{ measures the relative support for the whole generative model coming from the data}. It has the same straightforward meaning as the posterior odds, if the model-prior weights $\pi_M(m)=\pi_M\left(m^{\prime}\right)$ are equal.
+
+\begin{tabular}{|l|l|l|l|}
+\hline \multicolumn{1}{|c|}{$B_{r m, r m^{\prime}}$} & \multicolumn{1}{c|}{ dHart } & \multicolumn{1}{c|}{ bits } & \multicolumn{1}{c|}{ Strength of evidence } \\
+\hline$<\mathbf{1 0}^{\mathbf{0}}$ & $<0$ & $<0$ & Negative (supports $M_2$ ) \\
+\hline $\mathbf{1 0}^{\mathbf{0}}$ to $\mathbf{1 0}^{\mathbf{1 / 2}}$ & 0 to 5 & 0 to 1.6 & Barely worth mentioning \\
+\hline $\mathbf{1 0}^{\mathbf{1 / 2}}$ to $10^{\mathbf{1}}$ & 5 to 10 & 1.6 to 3.3 & Substantial \\
+\hline $\mathbf{1 0}^{\mathbf{1}}$ to $10^{\mathbf{3 / 2}}$ & 10 to 15 & 3.3 to 5.0 & Strong \\
+\hline $\mathbf{1 0}^{\mathbf{3 / 2}}$ to $10^{\mathbf{2}}$ & 15 to 20 & 5.0 to 6.6 & Very strong \\
+\hline$>10^{\mathbf{2}}$ & $>20$ & $>6.6$ & Decisive \\
+\hline
+\end{tabular}
+
 
 \section{An introduction to Markov chain Monte Carlo Methods}
 \subsection{Markov Chains}
@@ -459,5 +471,107 @@ The Effective Independent Samples per CPU second (\( \frac{ESS}{S} \)) is a key 
 \begin{equation}
     \frac{ESS}{S} = \frac{\text{Number of Effective Independent Samples}}{\text{CPU Time for } n \text{ Steps of MCMC}}
 \end{equation}
+
+\subsection{Further applications of Monte Carlo methods for inference
+}
+\subsubsection{Estimating the Marginal Likelihood}
+
+\textbf{The naive estimate:} Since \( p(y|m) = E_\theta(p(y|\theta, m)) \) we could simply average the likelihood in the prior. Simulate \( \theta(t) \sim \pi(\theta|m) \), \( t = 1...T \) and form the estimate \( \hat{p}_m = T^{-1} \sum_{t} p(y|\theta(t), m) \).
+
+\begin{itemize}
+    \item The failure of this estimator in practice reflects the fundamental problem of estimating a marginal likelihood.
+    \item The prior is typically diffuse over the parameter space, while the function we are averaging, \( p(y|\theta, m) \), is typically very close to zero except on a relatively small set of \( \theta \)-values.
+    \item Most of the mass of the function is concentrated in this small set see \ref{fig:likelihood}.
+    \item If we simply simulate the prior, the proportion of samples actually hitting this set may be small (or zero).
+\end{itemize}
+
+\begin{figure}
+    \centering
+    \includegraphics[width=0.75\linewidth]{ox-hilary//bayes-methods//figures/likelihood.png}
+    \caption{Illustration of naive estimator with concentrated likelihood in a large high dimensional parameter space}
+    \label{fig:likelihood}
+\end{figure}
+\newline
+\textbf{The Harmonic Mean estimate}: Basically, importance sampling using the posterior.
+Simulate $\theta^{(t)} \sim \pi(\theta \mid y, m), t=1 \ldots T$, perhaps using MCMC. If
+$$
+w_t=\pi\left(\theta^{(t)} \mid m\right) / \pi\left(\theta^{(t)} \mid y, m\right)
+$$
+then
+$$
+\hat{p}_m^{\prime}=\frac{1}{T} \sum_t w_t p\left(y \mid \theta^{(t)}, m\right)
+$$
+is a consistent and unbiased estimate for $p(y \mid m)$. This is standard importance sampling: since the samples are identically distributed (not necessarily independent),
+$$
+\begin{aligned}
+E_{\theta^{(1: T)} \mid y, m}\left(\hat{p}_m^{\prime}\right) & =T^{-1} \sum_t \int_{\Omega} w_t p\left(y \mid \theta^{(t)}, m\right) \pi\left(\theta^{(t)} \mid y, m\right) d \theta^{(t)} \\
+& =\int_{\Omega} p(y \mid \theta, m) \pi(\theta \mid m) d \theta
+\end{aligned}
+$$
+where $\theta^{(1: T)}=\left(\theta^{(1)}, \ldots, \theta^{(T)}\right)$ and we substituted in the weights and canceled the posterior. We cant compute normalised weights $w_t$ as we dont know the marginal likelihood which appears in the posterior $\pi\left(\theta^{(t)} \mid y, m\right)$, so we use $\tilde{w}_t \propto w_t$ . The prior factors cancel and we have
+$$
+\tilde{w}_t=1 / p\left(y \mid \theta^{(t)}, m\right)
+$$
+
+Now
+$$
+\begin{aligned}
+E_{\theta^{(t)} \mid y, m}\left(\tilde{w}_t\right) & =\int_{\Omega} \frac{\pi\left(\theta^{(t)} \mid y, m\right)}{p\left(y \mid \theta^{(t)}, m\right)} d \theta^{(t)} \\
+& =\int_{\Omega} \frac{\pi(\theta \mid m)}{p(y \mid m)} d \theta \\
+& =p(y \mid m)^{-1} .
+\end{aligned}
+$$
+
+It follows that $T^{-1} \sum_t \tilde{w}_t$ converges in probability to $p(y \mid m)^{-1}$. The "self-normalised", \textbf{biased but still consistent}, IS-estimator for the marginal likelihood $p(y \mid m)$ is then the inverse of this,
+$$
+\hat{p}_m=\left[\frac{1}{T} \sum_t \frac{1}{p\left(y \mid \theta^{(t)}, m\right)}\right]^{-1}
+$$
+
+This estimator is not to be trusted (though widely used). The problem is that it is exposed to rare very large weights which arise when $\theta^{(t)}$ is in the tail of the posterior, so $p\left(y \mid \theta^{(t)}, m\right)$ is very small, and its inverse large
+\newline
+\textbf{Bridge Estimate:}
+ Let $h: \Omega \rightarrow R$ be a given function with the property that following expectations are finite and non-zero. The identity
+$$
+p(y)=\frac{E_\theta(\pi(\theta) p(y \mid \theta) h(\theta))}{E_{\theta \mid y}(\pi(\theta) h(\theta))}
+$$
+holds. Expectation in the numerator is over the prior and in the denominator expectation is over the posterior.
+$$
+\frac{p(y \mid m)}{p\left(y \mid m^{\prime}\right)}=\frac{E_{\theta \mid y, m^{\prime}}(\pi(\theta \mid m) p(y \mid \theta, m) h(\theta))}{E_{\theta \mid y, m}\left(\pi\left(\theta \mid m^{\prime}\right) p\left(y \mid \theta, m^{\prime}\right) h(\theta)\right)}
+$$
+holds. Expectation in the numerator/denominator is over the posterior in model $\mathrm{m}^{\prime} / \mathrm{m}$.
+
+
+ Let $\theta^{(1, t)} \sim \pi(\theta)$ be a set of $T$ samples from the prior and $\theta^{(2, t)} \sim \pi(\theta \mid y), t=1 \ldots T$ be a set of $T$ samples from the posterior. Plug in the natural estimates for the numerator and denominator and get
+
+$$
+\hat{p}=\frac{\sum_t \pi\left(\theta^{(1, t)}\right) p\left(y \mid \theta^{(1, t)}\right) h\left(\theta^{(1, t)}\right)}{\sum_t \pi\left(\theta^{(2, t)}\right) h\left(\theta^{(2, t)}\right)} .
+$$
+
+This is consistent for $p(y)$ if the two sets of samples are each iid (or if they are suitable MCMC output, as for the harmonic mean estimate).
+
+The power of this setup is that the \textbf{identity holds for a very large class of functions }$h$. We can choose $h(\theta)$ to make the (RMSE) Relative Mean Square Error $E\left((\hat{p}-p(y))^2\right) / p(y)^2$ small (expectation is over Monte-Carlo sampling variation of $\hat{p}$ ).
+
+The choice of $h$ minimising the RMSE for iid samples is
+$$
+h(\theta) \propto \frac{1}{\pi(\theta)+\pi(\theta \mid y)} .
+$$
+see \cite{meng_simulating_1996}.
+
+\textbf{The problem here is that the optimal $h$ depends on the normalised posterior, and we cant calculate that without knowing the thing we are trying to estimate.} \cite{meng_simulating_1996} give an iterative algorithm which works very well. However they also remark that\textbf{ the simple choice $h \propto 1 / \sqrt{\tilde{p}_1 \tilde{p}_2}$ is often near optimal for bridging densities $\tilde{p}_1 / Z_1$ and $\tilde{p}_2 / Z_2$.} In our setting with densities $\tilde{p}_1=\pi(\theta)$ and $\tilde{p}_2=\pi(\theta) p(y \mid \theta)$ this gives $h(\theta)=\pi(\theta)^{-1} p(y \mid \theta)^{-1 / 2}$ and
+$$
+\hat{p}=\frac{\sum_t p\left(y \mid \theta^{(1, t)}\right)^{1 / 2}}{\sum_t p\left(y \mid \theta^{(2, t)}\right)^{-1 / 2}} .
+$$
+
+This has much lower RMSE than the harmonic mean.
+
+Taking $m=1$ and $m^{\prime}=2$ as the model indices, $\theta^{(1, t)} \sim \pi(\theta \mid y, m=1)$ and $\theta^{(2, t)} \sim \pi(\theta \mid y, m=$ 2), $\quad t=1 \ldots T$, and
+$$
+h(\theta)=\left(\pi(\theta \mid m) p(y \mid \theta, m) \pi\left(\theta \mid m^{\prime}\right) p\left(y \mid \theta, m^{\prime}\right)\right)^{-1 / 2},
+$$
+gives
+$$
+\hat{B}_{m, m^{\prime}}=\frac{\sum_t\left(\frac{\pi\left(\theta^{(2, t)} \mid m\right) p\left(y \mid \theta^{(2, t)}, m\right)}{\pi\left(\theta^{(2, t)} \mid m^{\prime}\right) p\left(y \mid \theta^{(2, t)}, m^{\prime}\right)}\right)^{1 / 2}}{\sum_t\left(\frac{\pi\left(\theta^{(1, t)} \mid m^{\prime}\right) p\left(y \mid \theta^{(1, t)}, m^{\prime}\right)}{\pi\left(\theta^{(1, t)} \mid m\right) p\left(y \mid \theta^{(1, t)}, m\right)}\right)^{1 / 2}},
+$$
+fairly stable and close to the state of the art for simple generic estimators. 
 
 \end{document}
