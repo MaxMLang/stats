@@ -1,0 +1,84 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+
+\begin{document}
+
+\section*{Logit Logistic Regression}
+
+\textbf{Mathematical Basis:}
+\begin{itemize}
+  \item The Logit model uses the logistic function to map probabilities. The formula is: 
+  \[ P(Y=1) = \frac{1}{1 + e^{-(\beta_0 + \beta_1 X)}} \]
+  Here, $P(Y=1)$ is the probability of the event occurring (Y=1), $\beta_0$ is the intercept, $\beta_1$ is the coefficient for the predictor $X$, and $e$ is the base of natural logarithms.
+\end{itemize}
+
+\textbf{Interpretation:}
+\begin{itemize}
+  \item The coefficients in a logit model represent the log odds. For a one-unit increase in $X$, the log odds of $Y=1$ increase by $\beta_1$.
+  \item To interpret the coefficients intuitively, we often convert log odds to odds ratios by exponentiating the coefficients.
+\end{itemize}
+
+\textbf{Marginal Effects:}
+\begin{itemize}
+  \item While the coefficients give us the change in log odds, they don't directly tell us how the probability of $Y=1$ changes with a unit change in $X$. That's where marginal effects come in, giving us a more intuitive understanding of the impact of predictor variables.
+\end{itemize}
+
+\section*{Probit Regression}
+
+\textbf{Mathematical Basis:}
+\begin{itemize}
+  \item The Probit model uses the cumulative distribution function (CDF) of the standard normal distribution. The formula is:
+  \[ P(Y=1) = \Phi(\beta_0 + \beta_1 X) \]
+  Here, $\Phi$ denotes the CDF of the standard normal distribution.
+\end{itemize}
+
+\textbf{Interpretation:}
+\begin{itemize}
+  \item In Probit, the coefficients represent the change in the z-score of the standard normal distribution that corresponds to a one-unit change in $X$.
+  \item The interpretation of these coefficients is less intuitive than in the Logit model, as they relate to changes in the z-score rather than odds.
+\end{itemize}
+
+\textbf{Marginal Effects:}
+\begin{itemize}
+  \item Marginal effects are particularly important in Probit models because the coefficients themselves are difficult to interpret directly. The marginal effect in Probit tells us how the probability of $Y=1$ changes with a small change in $X$, and it varies depending on the values of $X$.
+\end{itemize}
+
+\section*{Comparison and When to Use Which}
+
+\textbf{Differences in Interpretation:}
+\begin{itemize}
+  \item Logit coefficients are interpreted in terms of log odds and are more intuitive. Probit coefficients are interpreted in terms of z-scores of a normal distribution and are less intuitive.
+  \item Marginal effects are essential for both, but more so for Probit due to the less intuitive nature of its coefficients.
+\end{itemize}
+
+\textbf{Differences Error Distribution:}
+\begin{itemize}
+    \item \textbf{Logit Model Error Distribution: Logistic Distribution}
+    \begin{itemize}
+        \item Results in a logistic function for the probability model.
+    \end{itemize}
+    \begin{itemize}
+        \item Assumes a slightly different distribution of error terms compared to Probit, with more weight in the tails.
+    \end{itemize}
+    \textbf{\item Probit Model Error Distribution: Standard Normal Distribution}
+    \begin{itemize}
+        \item Aligns with many traditional statistical assumptions of normality.
+    \end{itemize}
+    \begin{itemize}
+        \item Uses the CDF of the standard normal distribution for the probability model.
+    \end{itemize}
+\end{itemize}
+
+\textbf{When to Use Probit:}
+\begin{itemize}
+  \item Probit is often preferred when the underlying latent process being modeled is believed to follow a normal distribution, as it aligns with the Probit model's assumption of a normal error term.
+  \item It's also preferred in some disciplines, like economics, where the normal CDF is a standard modeling choice.
+\end{itemize}
+
+\textbf{When to Use Logit:}
+\begin{itemize}
+  \item Logit is preferred when the focus is on interpreting the coefficients in terms of odds ratios, which are more intuitive.
+  \item It's also used widely in fields like medicine and public health.
+\end{itemize}
+
+\end{document}
