@@ -127,10 +127,40 @@ Note that to implement rejection sampling, we need to implement a mechanism to e
 Indeed $\mathbb{P}(U \leq \alpha)=\alpha$ when $U \sim \mathcal{U}_{[0,1]}$, so that the above scheme will "do this" with probability $\alpha$.
 
 
-\subsection{Importance Sampling}
-In the rejection sampling algorithm, we simulate from a distribution $\pi$ by sampling from a proposal distribution $q$ and rejecting some of the proposed values. Importance sampling uses another correction scheme based on \textbf{reweighting}. In this context the proposal $q$ is also known as an importance distribution.
 
-\subsubsection{Standard Importance Sampling}
+\section{Importance Sampling}
+\subsection{Intuitive Explanation}
+Importance sampling is a technique used to estimate properties of a particular distribution, while only having samples from a different distribution. This method is especially useful when it is difficult to sample directly from the distribution of interest. The core idea behind importance sampling can be illustrated with a straightforward analogy:
+
+Imagine you're trying to understand the behavior of a rare bird species in a vast forest, but these birds are so scarce that finding them by random search would be inefficient. Instead, you decide to focus on specific parts of the forest where birds are known to visit more frequently, based on previous observations or expert knowledge. These parts represent the proposal distribution from which you can more easily collect samples.
+
+Once you have your observations, you don't just count the birds seen; you also weigh each observation by how representative it is of the entire forest. This weighting corrects for the bias introduced by focusing on the specific parts of the forest, allowing you to estimate the total bird population or other characteristics accurately.
+
+\subsection{Mathematical Explanation}
+Mathematically, importance sampling involves the following steps:
+\begin{enumerate}
+    \item Choose a Proposal Distribution: Select a proposal distribution, $q(x)$, from which you can easily sample. Ideally, $q(x)$ should be similar to your target distribution $p(x)$ but easier to sample from.
+    \item Compute Weights: For each sample $x$ drawn from $q(x)$, compute a weight $w(x) = \frac{p(x)}{q(x)}$. This weight measures how much more (or less) likely the sample is under the target distribution compared to the proposal distribution.
+    \item Estimate Target Properties: Use the weighted samples to estimate properties of the target distribution, such as its mean or variance. For example, the weighted average of the samples can estimate the expected value under the target distribution.
+\end{enumerate}
+
+This process leverages the proposal distribution to efficiently explore the sample space, with the weights correcting for the difference between the proposal and target distributions. This correction allows for accurate estimation of the target distribution’s properties without directly sampling from it.
+
+\subsection{Algorithm}
+
+To estimate the expected value of a function $f(x)$ under the target distribution $\pi(x)$ using samples from a proposal distribution $q(x)$, we follow these steps:
+\newline
+1. Draw $n$ independent samples $X_1, X_2, \ldots, X_n$ from $q(x)$.
+\newline
+2. Compute weights for each sample: $w_i = \frac{\pi(X_i)}{q(X_i)}$ for $i = 1, 2, \ldots, n$.
+\newline
+3. Estimate the expected value as:
+$$
+\hat{E}[f(X)] = \frac{\sum_{i=1}^n w_i f(X_i)}{\sum_{i=1}^n w_i}.
+$$
+
+
+\subsection{Standard Importance Sampling}
 
 Let \( q \) and \( \pi \) be two probability density functions on \( \mathcal{X} \) such that \( \pi(x) > 0 \) implies \( q(x) > 0 \). Then, for any set \( A \) such that \( \pi(A) > 0 \)
 
@@ -159,7 +189,33 @@ is consistent through the strong law of large numbers if \( \mathbb{E}_q[|\phi(X
     \item[(c)] \( \sqrt{n} \left( \frac{\hat{I}_{\text{IS}}}{n} - I \right) \rightarrow \mathcal{N}(0, \sigma^2_{\text{IS}}(\phi)) \).
 \end{itemize}
 
+\subsection{Normalised Importance Sampling}
+
+\subsubsection{Challenge with Standard Importance Sampling}
+
+The challenge with standard importance sampling arises when we need to know the exact form of \( \pi(x) \), the target distribution. In many practical applications, especially in Bayesian inference, we only know \( \pi(x) \) up to a constant factor, because calculating the normalising constant \( Z_{\pi} \) (which makes the integral of \( \pi(x) \) over its support equal to 1) can be difficult or computationally infeasible.
+
 \subsubsection{Normalised Importance Sampling}
+
+Normalised importance sampling addresses this challenge by using an unnormalised version of the target distribution \( \tilde{\pi}(x) \) and the proposal distribution \( \tilde{q}(x) \). Here's what normalising means in this context:
+
+\subsubsection{Unnormalised Distributions}
+
+Both \( \tilde{\pi}(x) \) and \( \tilde{q}(x) \) are the forms of the distributions without being scaled by their respective normalising constants. That is, they can be used to calculate probabilities, ratios of probabilities, or expectations, but their integrals over all possible values of \( x \) do not necessarily sum or integrate to 1.
+
+\subsubsection{Normalising Constants}
+
+\( Z_{\pi} \) and \( Z_q \) are the normalising constants for \( \tilde{\pi}(x) \) and \( \tilde{q}(x) \), respectively. These constants are what you would multiply the unnormalised functions by in order to make them proper probability distributions (i.e., so that they integrate to 1 over the space of \( x \)). They are often difficult to compute, which is why methods that avoid needing them explicitly, like normalised importance sampling, are useful.
+
+\subsubsection{How Normalised Importance Sampling Works}
+
+In normalised importance sampling, we work with unnormalised weights derived from the unnormalised distributions. The weight for a sample \( x \) drawn from \( q(x) \) is given by the ratio of the unnormalised target and proposal densities at \( x \):
+
+\[ w(x) = \frac{\tilde{\pi}(x)}{\tilde{q}(x)} \]
+
+Since both \( \tilde{\pi}(x) \) and \( \tilde{q}(x) \) are unnormalised, the weights \( w(x) \) do not depend on the unknown normalising constants \( Z_{\pi} \) and \( Z_q \). This allows for the estimation of expectations under \( \pi(x) \) without knowing these constants.
+
+\subsubsection{Final Estimation}
 
 In practice, standard importance sampling has limited applications as it requires exact evaluations of \( \pi(x) \), contrarily to rejection sampling where \( \pi(x) \) and \( q(x) \) only have to be evaluated up to some normalising constants. However there is an alternative version of importance sampling known as normalised importance sampling which bypasses this problem. Assume that whenever \( \pi(x) > 0 \) implies \( q(x) > 0 \), and that we can write \( \pi(x) = \tilde{\pi}(x)/Z_{\pi} \) and \( q(x) = \tilde{q}(x)/Z_q \), for some normalising constants \( Z_{\pi} \) and \( Z_q \). We introduce the unnormalised weight function
 
@@ -173,7 +229,7 @@ Then, we can write
 I = \mathbb{E}_{\pi}[\phi(X)] = \int_{\mathcal{X}} \phi(x) \pi(x) dx = \int_{\mathcal{X}} \phi(x) \tilde{w}(x)q(x) dx = \int_{\mathcal{X}} \phi(x) w(x) \tilde{q}(x) dx = \mathbb{E}_q[\phi(X)\tilde{w}(X)].
 \]
 
-where the importance weight function only involves the unnormalised probability density functions \( \tilde{\pi} \) and \( \tilde{q} \).
+where the importance weight function only involves the \textbf{unnormalised probability density functions \( \tilde{\pi} \) and \( \tilde{q} \).}
 
 Now, let \( X_1, \ldots, X_n \) be a sample of independent random variables distributed according to \( q \). The estimator
 
