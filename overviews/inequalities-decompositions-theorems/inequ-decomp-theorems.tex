@@ -1,0 +1,306 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+
+\title{Overview of important statistical inequalities, theorems, and decompositions}
+\author{}
+\date{}
+
+\begin{document}
+\tableofcontents
+\maketitle
+\section{Chebyshev's Inequality}
+
+\subsection{Statement}
+Chebyshev's inequality provides a bound on the probability that the value of a random variable with finite variance is a certain distance from its mean. Mathematically, for a random variable \( X \) with mean \( \mu \) and variance \( \sigma^2 \), and for any real number \( k > 0 \), the inequality is stated as:
+\[ \Pr(|X - \mu| \geq k\sigma) \leq \frac{1}{k^2} \]
+
+\subsection{Importance and Use Cases}
+This inequality is crucial in probability theory and statistics as it applies to any probability distribution with a defined mean and variance, regardless of the distribution's shape. It's often used to prove the Weak Law of Large Numbers and is fundamental in fields such as economics, finance, and quality control where it's essential to measure how much variation can be expected from the mean.
+
+\subsection{Intuition}
+The intuition behind Chebyshev's inequality is that the probability of a random variable deviating significantly from its mean decreases as the deviation increases. It tells us that for a random variable, most of its values are concentrated around the mean, providing a way to quantify that concentration without knowing the exact distribution.
+
+\subsection{History}
+Chebyshev's inequality is named after the Russian mathematician Pafnuty Chebyshev. It was proven and popularized by him in the 19th century. While Chebyshev formalized and proved the inequality, it had been used implicitly by other mathematicians like Bienaymé before him. It forms a foundation for the probability theory that has been expanded upon by many statisticians and mathematicians since then.
+
+
+Absolutely, here's a structured overview of Jensen's Inequality similar to the previous format for Chebyshev's Inequality.
+
+\section{Cantelli's Inequality}
+
+\subsection{Statement}
+Cantelli's Inequality, also known as the one-sided Chebyshev Inequality, provides a bound on the probability that a real-valued random variable deviates from its mean in one direction, either above or below. For a random variable \(X\) with expected value \( \mathbb{E}[X] \) and variance \( \sigma^2 \), and for any \( \lambda > 0 \), the inequality is given as:
+\[ \Pr(X - \mathbb{E}[X] \geq \lambda) \leq \frac{\sigma^2}{\sigma^2 + \lambda^2} \]
+Similarly, the bound on the lower tail is:
+\[ \Pr(X - \mathbb{E}[X] \leq -\lambda) \leq \frac{\sigma^2}{\sigma^2 + \lambda^2} \]
+
+\subsection{Importance and Use Cases}
+Cantelli's Inequality is particularly useful in the fields of finance, risk management, and other areas where one-sided bounds are required. It provides a more precise estimate than the two-sided Chebyshev's Inequality when we are interested in the probability of a random variable falling on one side of its mean.
+
+\subsection{Intuition}
+The inequality captures the intuition that large deviations from the mean in one direction are unlikely. Cantelli's Inequality quantifies this unlikelihood and gives a tighter bound compared to Chebyshev's Inequality, which considers deviations in both directions.
+
+\subsection{History}
+The inequality is often attributed to Francesco Paolo Cantelli, who published it in 1928. However, the origins can be traced back to Chebyshev's work of 1874. Cantelli's work provided an asymmetric version of Chebyshev's Inequality, thus it is sometimes referred to as the one-sided Chebyshev Inequality. Cantelli's Inequality is a notable example of how earlier mathematical concepts can be refined to yield more precise and tailored results.
+
+
+\section{Jensen's Inequality}
+
+\subsection{Statement}
+Jensen's Inequality relates convex functions to expectations in probability and integrals in real analysis. For a probability space \((\Omega, \mathcal{A}, \mu)\), a convex function \(\varphi: \mathbb{R} \rightarrow \mathbb{R}\), and a random variable \(X\) that is integrable, the inequality is expressed as:
+\[ \varphi \left( \int_{\Omega} X \, d\mu \right) \leq \int_{\Omega} \varphi(X) \, d\mu \]
+
+Suppose $X$ is a random variable such that $\mathbb{P}(a \leqslant X \leqslant b)=1$. If $g: \mathbb{R} \longrightarrow \mathbb{R}$ is convex on $[a, b]$, then
+$$
+\mathbb{E} g(X) \geqslant g(\mathbb{E} X) .
+$$
+
+If $g$ is concave, then
+$$
+\mathbb{E} g(X) \leqslant g(\mathbb{E} X)
+$$
+
+
+\subsection{Importance and Use Cases}
+This inequality is significant in various fields, including economics, risk management, and optimization. It is used to derive bounds on quantities of interest where convexity is present and is particularly important in the context of expected utility theory in economics, where it helps in understanding risk aversion. It's also a foundational tool in the theory of convex optimization.
+
+\subsection{Intuition}
+The intuition behind Jensen's Inequality is that for a convex function, the expected value of the function applied to a random variable is at least as large as the function of the expected value of that variable. It captures the idea that the "average" outcome is less than or equal to the outcome of the "average" input when the function is convex.
+
+\subsection{History}
+Jensen's Inequality is named after the Danish mathematician Johan Jensen. He provided the proof for this inequality in the early 20th century. It is an essential result in the field of convex analysis and has been used to establish other important statistical principles and theorems. Its simplicity and generality make it a powerful tool in both theoretical and applied mathematics.
+
+
+Of course! Here's a structured overview of Markov's Inequality similar to the previous format for Chebyshev's and Jensen's Inequalities.
+
+\section{Markov's Inequality}
+
+\subsection{Statement}
+Markov's Inequality provides a bound on the probability that a nonnegative random variable is greater than or equal to some positive value. For a nonnegative random variable \(X\) and any \(a > 0\), the inequality is stated as:
+\[ P(X \geq a) \leq \frac{\mathbb{E}[X]}{a} \]
+
+\subsection{Importance and Use Cases}
+Markov's Inequality is a fundamental tool in probability theory and statistics. It is particularly useful when dealing with rare events and provides an upper bound on probabilities without requiring knowledge of the exact distribution of the random variable. It serves as the basis for other inequalities, such as Chebyshev's Inequality, and is widely used in algorithms and theoretical computer science.
+
+\subsection{Intuition}
+The core idea behind Markov's Inequality is that the probability of a nonnegative random variable taking on large values is limited by its expected value. The inequality essentially states that a random variable can't be "too large" too often, relative to its average.
+
+\subsection{History}
+Markov's Inequality is named after the Russian mathematician Andrey Markov, known for his work in probability theory and number theory. The inequality is one of the simplest and earliest results in the study of probabilities and expectations, and it underscores the basic property of nonnegative random variables in terms of their mean. Markov's contributions to probability theory extend beyond this inequality, but it remains one of the most widely recognized results associated with his name.
+
+
+Certainly! Here's a structured overview of the Cauchy-Schwarz Inequality.
+
+\section{Cauchy-Schwarz Inequality}
+
+\subsection{Statement}
+The Cauchy-Schwarz Inequality is a fundamental result in linear algebra stating that for all vectors \( u \) and \( v \) in an inner product space, the absolute square of the inner product is less than or equal to the product of the individual inner products of the vectors with themselves:
+\[ | \langle u, v \rangle |^2 \leq \langle u, u \rangle \cdot \langle v, v \rangle \]
+This inequality also extends to random variables \( X \) and \( Y \), implying that:
+\[ (\mathbb{E}[XY])^2 \leq \mathbb{E}[X^2] \cdot \mathbb{E}[Y^2] \]
+Equality holds if and only if one of the vectors is a scalar multiple of the other, or in the probabilistic form, if \( X \) and \( Y \) are linearly related.
+
+\subsection{Importance and Use Cases}
+This inequality is pivotal in various mathematical fields including analysis, probability theory, and statistics. It provides a bridge between angles and lengths in geometry and has implications for the correlation between random variables, error bounds in numerical methods, and the stability of solutions to differential equations.
+
+\subsection{Intuition}
+The essence of the Cauchy-Schwarz Inequality is that the "overlap" of two vectors (or the covariance between two random variables) cannot exceed the product of their individual "sizes" or variances. This concept is analogous to the fact that the projection of one vector onto another cannot be longer than the original vector itself.
+
+\subsection{History}
+The inequality is named after Augustin-Louis Cauchy and Hermann Schwarz. Cauchy was a French mathematician who made numerous contributions to mathematics, while Schwarz was a German mathematician known for his work in analysis. The inequality was initially formulated by Cauchy in 1821 and later generalized by Schwarz in the 1880s. It is a classic example of a result that has been independently discovered and refined by multiple mathematicians across different mathematical areas.
+
+
+\section{Cholesky Decomposition}
+
+\subsection{Statement}
+The Cholesky Decomposition is a method of decomposing a Hermitian positive-definite matrix \( A \) into the product of a lower triangular matrix \( L \) and its conjugate transpose \( L^* \), such that \( A = LL^* \). For real matrices, which are symmetric and positive-definite, the decomposition simplifies to \( A = LL^T \), where \( L^T \) denotes the transpose of \( L \). This factorization is unique as long as the matrix is positive-definite.
+
+\subsection{Importance and Use Cases}
+The Cholesky Decomposition is critical in numerical analysis for solving systems of linear equations, optimizing computational efficiency, and ensuring numerical stability. It is particularly useful when dealing with covariance matrices in statistics, where the matrices are symmetric and positive-definite, making this decomposition method preferred over others for its numerical stability and speed.
+
+\subsection{Intuition}
+The intuitive idea behind the Cholesky Decomposition is that any "nice" positive-definite matrix can be thought of as a product of a lower triangular matrix and its transpose. This reflects a structured, stepwise buildup of the matrix, akin to constructing a building by first laying down a solid triangular foundation and then adding levels that mirror the base.
+
+\subsection{Positive Semidefinite Matrices}
+For positive semidefinite matrices, which can have zero eigenvalues, the Cholesky Decomposition still applies, but the diagonal entries of \( L \) can be zero, leading to potential non-uniqueness in the decomposition. However, uniqueness can be restored by either considering only the non-zero part of the matrix or by employing a permutation matrix to reorder the matrix into a unique lower triangular form with positive diagonal.
+
+\subsection{History}
+The decomposition is named after the French mathematician André-Louis Cholesky, who developed the algorithm in the early 20th century. Although he used it practically for geodetic surveys, it was only published posthumously. The method is a special case of the LU decomposition and has since become a standard technique in computational matrix algebra.
+
+Certainly! Here's an overview of the Gauss-Markov Theorem, organized in the requested format.
+
+\section{Gauss-Markov Theorem}
+
+\subsection{Statement}
+The Gauss-Markov Theorem is a fundamental result in statistics that addresses the properties of ordinary least squares (OLS) estimators in the context of linear regression models. It states that, under certain assumptions, the OLS estimators of the coefficients in a linear regression model are unbiased, efficient (having the smallest variance among the class of linear unbiased estimators), and have the smallest mean squared error (MSE) among all linear unbiased estimators. Mathematically, for a linear regression model \(Y = X\beta + \epsilon\), where \(Y\) is the dependent variable, \(X\) is the design matrix, \(\beta\) is the vector of parameters, and \(\epsilon\) is the error term with mean zero and constant variance, the OLS estimators \(\hat{\beta}\) are the Best Linear Unbiased Estimators (BLUE).
+
+\subsection{Importance and Use Cases}
+The Gauss-Markov Theorem is of paramount importance in econometrics, statistics, and various fields that rely on linear regression analysis. It justifies the use of OLS estimators as the best linear unbiased estimators and highlights their optimality properties. This theorem underpins the foundations of regression analysis, providing a solid statistical framework for parameter estimation in linear models.
+
+\subsection{Intuition}
+The intuition behind the Gauss-Markov Theorem is that, among all possible linear unbiased estimators, the OLS estimators have the smallest variance, making them the most precise estimators. This means that, on average, OLS estimates are not systematically biased, and they achieve the smallest spread (variance) around the true parameter values. This optimality is particularly valuable when dealing with limited and noisy data.
+
+\subsection{Assumptions}
+The Gauss-Markov Theorem assumes that the errors \(\epsilon\) in the linear regression model are independent, have constant variance (\(\text{Var}(\epsilon) = \sigma^2\)), and are normally distributed. Additionally, it assumes that there is no perfect multicollinearity among the predictor variables in \(X\), and that the model is correctly specified.
+
+\subsection{History}
+The theorem is named after Carl Friedrich Gauss and Andrey Markov, who made foundational contributions to probability theory and statistics. However, the formal statement and proof of the Gauss-Markov Theorem were developed by multiple statisticians, including Maurice G. Kendall, Norbert Wiener, and Ragnar Frisch, during the early 20th century. The theorem serves as a cornerstone of modern regression analysis and is a testament to the foundational work laid by these eminent statisticians.
+
+Certainly! Here's an overview of the Slutsky's Theorem, organized in the requested format.
+
+section{Slutsky's Theorem}
+
+\subsection{Statement}
+Slutsky's Theorem is a fundamental result in mathematical statistics and econometrics that describes the behavior of sequences of random variables and the convergence of probability distributions. It states that if a sequence of random variables \(X_n\) converges in distribution to a random variable \(X\), and another sequence of random variables \(Y_n\) converges in distribution to a constant \(c\), then the following holds:
+\[ X_n + Y_n \xrightarrow{d} X + c \]
+\[ X_nY_n \xrightarrow{d} cX \]
+In other words, the sum and product of random variables converging in distribution converge in distribution to the sum and product of their respective limits.
+
+\subsection{Importance and Use Cases}
+Slutsky's Theorem is a fundamental tool in statistics and econometrics, especially in the context of the central limit theorem and limit theorems for sample means. It allows researchers to make inferences about the distributions of sums and products of random variables as sample sizes increase, making it essential in hypothesis testing, confidence intervals, and statistical inference.
+
+\subsection{Intuition}
+The intuition behind Slutsky's Theorem is that the limiting behavior of a sum or product of random variables is determined by the limiting behavior of the individual random variables involved. When one of the random variables converges to a constant, its effect on the sum or product is straightforward, and the limit can be determined from the limiting behavior of the other random variable.
+
+\subsection{Assumptions}
+Slutsky's Theorem assumes that the sequences of random variables \(X_n\) and \(Y_n\) converge in distribution. This means that the cumulative distribution functions of \(X_n\) and \(Y_n\) converge to the cumulative distribution functions of \(X\) and \(c\) (the constant), respectively, as \(n\) approaches infinity.
+
+\subsection{History}
+The theorem is named after Eugen Slutsky, a Russian economist and statistician, who contributed significantly to the development of statistical and econometric theory in the early 20th century. While Slutsky's Theorem has direct applications in econometrics, its principles are widely used in statistical theory and form the basis for understanding the behavior of random variables in large samples. It plays a crucial role in the development of statistical methods for analyzing data and drawing meaningful conclusions.
+
+\section{Convergence Types}
+
+\subsection{Convergence in Probability}
+
+\subsubsection{Definition}
+Convergence in probability, denoted as \(X_n \xrightarrow{\mathbb{P}} X\), occurs when, for any positive \(\epsilon\), the probability that the absolute difference between \(X_n\) and \(X\) is greater than \(\epsilon\) approaches zero as \(n\) goes to infinity. Formally, \(\lim_{n \to \infty} \mathbb{P}(|X_n - X| > \epsilon) = 0\) for all \(\epsilon > 0\).
+
+\subsubsection{Intuition}
+Convergence in probability implies that as the sample size \(n\) increases, the values of \(X_n\) become increasingly likely to be close to the value of \(X\). It characterizes the convergence of random variables in terms of their probability distributions.
+
+\subsubsection{Relationship to the Different Types of Convergences}
+Convergence in probability is a weaker form of convergence compared to almost sure convergence and convergence in the \(r\)-th moment. It is also distinct from convergence in distribution, which focuses on the limiting behavior of cumulative distribution functions.
+
+\subsubsection{Implications}
+Convergence in probability is often used in statistical inference and hypothesis testing. It ensures that as the sample size grows, the estimates of parameters based on the sample converge in probability to the true parameter values, making it a key concept in the theory of estimation and statistics.
+
+\subsection{Almost Sure Convergence}
+
+\subsubsection{Definition}
+Almost sure convergence, denoted as \(X_n \xrightarrow{\text{a.s.}} X\), occurs when the probability of a sample point \(\omega\) in the sample space \(\Omega\) for which \(X_n(\omega)\) does not converge to \(X(\omega)\) as \(n\) approaches infinity is zero, i.e., \(\mathbb{P}(\{\omega \in \Omega \mid X_n(\omega) \not\rightarrow X(\omega) \text{ for } n \rightarrow \infty\}) = 0\).
+
+\subsubsection{ Intuition}
+Almost sure convergence guarantees that, with probability one, the values of \(X_n\) converge to the values of \(X\) for almost all sample points \(\omega\) in the sample space. It is a strong form of convergence that holds for the majority of sample outcomes.
+
+\subsubsection{ Relationship to the Different Types of Convergences}
+Almost sure convergence is the strongest form of convergence among the mentioned types. It implies convergence in probability and convergence in the \(r\)-th moment but is not equivalent to convergence in distribution.
+
+\subsubsection{ Implications}
+Almost sure convergence is often used in situations where we want to ensure that the convergence occurs with certainty for almost all sample points. It plays a crucial role in various areas of probability theory and statistics.
+
+\subsection{Convergence in the \(r\)-th Moment}
+
+\subsubsection{ Definition}
+Convergence in the \(r\)-th moment, denoted as \(X_n \xrightarrow{r} X\), occurs when, for each positive integer \(r\), the expected value of the \(r\)-th power of \(|X_n|\) is finite for all \(n\), and the expected value of the \(r\)-th power of \(|X_n - X|\) approaches zero as \(n\) goes to infinity.
+
+\subsubsection{ Intuition}
+Convergence in the \(r\)-th moment ensures that the moments (or powers) of the random variables \(X_n\) converge to the moments of the random variable \(X\) as \(n\) increases. It is a strong form of convergence that considers the behavior of higher moments.
+
+\subsubsection{ Relationship to the Different Types of Convergences}
+Convergence in the \(r\)-th moment implies convergence in probability but does not necessarily imply almost sure convergence or convergence in distribution.
+
+\subsubsection{ Implications}
+Convergence in the \(r\)-th moment is often used in situations where we want to ensure that not only the means but also higher moments of random variables converge as the sample size increases. It has applications in statistics, particularly when dealing with moments, variances, and higher-order statistics.
+
+\subsection{ Convergence in Distribution}
+
+\subsubsection{ Definition}
+Convergence in distribution, denoted as \(X_n \xrightarrow{\mathcal{B}} X\), occurs when the cumulative distribution functions (CDFs) of \(X_n\) converge pointwise to the CDF of \(X\) at all continuity points of the limiting distribution. Formally, \(\lim_{n \to \infty} \mathbb{P}(X_n \leq x) = \mathbb{P}(X \leq x)\) for all \(x\) where \(F_X(x) = \mathbb{P}(X \leq x)\) is continuous.
+
+\subsubsection{ Intuition}
+Convergence in distribution describes the limiting behavior of the probability distribution of \(X_n\) as \(n\) goes to infinity. It focuses on the convergence of CDFs and characterizes how the distribution of \(X_n\) approaches the distribution of \(X\) as sample size increases.
+
+\subsubsection{ Relationship to the Different Types of Convergences}
+Convergence in distribution is distinct from the other types of convergences mentioned. It does not imply convergence in probability, almost sure convergence, or convergence in the \(r\)-th moment.
+
+\subsubsection{ Implications}
+Convergence in distribution is essential in the central limit theorem and is often used when dealing with large sample approximations. It helps analyze how the distribution of sample statistics approaches a limiting distribution as sample size increases.
+
+
+\section{Glivenko–Cantelli Theorem}
+
+\subsection{Statement}
+The Glivenko–Cantelli theorem, also known as the Fundamental Theorem of Statistics, states that for a sequence of independent and identically distributed random variables, the empirical distribution function converges uniformly to the true cumulative distribution function. Formally, if \( X_1, X_2, \ldots \) are i.i.d. random variables with the common cumulative distribution function \( F(x) \), then the empirical distribution function \( F_n(x) \) defined as
+$$
+F_n(x)=\frac{1}{n} \sum_{i=1}^n I_{\left[X_i, \infty\right)}(x)=\frac{1}{n}\left|\left\{i \mid X_i \leq x, 1 \leq i \leq n\right\}\right|
+$$
+converges uniformly to \( F(x) \) almost surely, where \( \mathbb{1} \) is the indicator function.
+
+ $$\left\|F_n-F\right\|_{\infty}=\sup _{x \in \mathbb{R}}\left|F_n(x)-F(x)\right| \longrightarrow 0 \text{ almost surely}$$
+
+\subsection{Importance and Use Cases}
+This theorem is pivotal in the field of statistics and has applications in machine learning and econometrics, particularly with M-estimators. It provides a guarantee for the consistency of empirical estimators, which is a cornerstone concept in statistics, ensuring that as more data is collected, the empirical results will converge to the true underlying probabilities.
+
+\subsection{Intuition}
+The intuition behind the Glivenko–Cantelli theorem is that as the sample size increases, the empirical distribution, constructed from observed data, will closely approximate the actual distribution from which the data is drawn. This convergence is uniform, meaning it applies across the entire range of the distribution function.
+
+\subsection{History}
+The theorem was established by Valery Glivenko and Francesco Paolo Cantelli in 1933. It bolstered the law of large numbers by providing a strong form of convergence, namely uniform convergence, for the empirical distribution function to the true distribution function. This result is fundamental in both theoretical and applied statistical work, and it underpins the reliability of empirical research findings based on large data sets.
+
+
+\section{Central Limit Theorems}
+\subsection{Weak Law of Large Numbers (WLLN)}
+
+\subsubsection{Statement}
+The Weak Law of Large Numbers states that for a sequence of independent and identically distributed (i.i.d.) random variables \( X_1, X_2, \ldots, X_n \) with a common expected value \( \mu \) and finite variance, the sample average \( \bar{X}_n = \frac{1}{n}\sum_{i=1}^{n}X_i \) converges in probability to \( \mu \) as \( n \) approaches infinity. Mathematically, it is expressed as:
+\[ P\left(\left|\bar{X}_n - \mu\right| > \varepsilon\right) \rightarrow 0 \text{ as } n \rightarrow \infty, \]
+for any \( \varepsilon > 0 \). 
+
+\subsubsection{Importance and Use Cases}
+The WLLN justifies the practice of estimating population parameters by sample means in statistics. It is widely used in fields such as economics, finance, and insurance to make predictions and understand long-term averages.
+
+\subsubsection{Intuition}
+The key intuition behind the WLLN is that fluctuations in the average of a large number of i.i.d. random variables tend to cancel out, making the average close to the expected value with high probability. It captures the concept that, while individual observations may vary widely, their average will likely be close to the population mean as the sample size grows.
+
+\subsubsection{History}
+The concept of the law of large numbers dates back to the work of Jacob Bernoulli in the late 17th century, with formalization and proof provided in the early 18th century. The term "weak" refers to the type of convergence it describes, which is convergence in probability, as opposed to almost sure convergence described by the Strong Law of Large Numbers.
+
+\subsection{Strong Law of Large Numbers (SLLN)}
+
+\subsubsection{Statement}
+The Strong Law of Large Numbers extends the idea of the WLLN by stating that, under the same assumptions of i.i.d. random variables with common expected value \( \mu \), the sample average \( \bar{X}_n \) converges almost surely (or with probability 1) to \( \mu \). This is denoted as:
+\[ P\left(\lim_{n \rightarrow \infty} \bar{X}_n = \mu\right) = 1. \]
+
+\subsubsection{Importance and Use Cases}
+The SLLN provides a stronger assurance than the WLLN for the convergence of the sample mean to the population mean, which is crucial for the theoretical foundation of many statistical methods, including parameter estimation and hypothesis testing.
+
+\subsubsection{Intuition}
+The SLLN suggests that not only does the probability of the sample mean deviating from the population mean go to zero, but also, with an infinite amount of data, the sample mean will equal the population mean with certainty. This law underlines the predictability of outcomes over the long run.
+
+\subsubsection{History}
+Building upon earlier work, the SLLN was first fully developed by Russian mathematician Andrey Kolmogorov in the 20th century. The "strong" in its name reflects the mode of convergence, which is almost sure convergence, indicating a stronger form of convergence compared to the WLLN's convergence in probability.
+
+\subsection{Difference between WLLN and SLLN}
+
+\subsubsection{Weak Law of Large Numbers (WLLN)}
+The WLLN tells us that as we take more and more observations, the probability that our sample average will be close to the population mean gets higher and higher. However, it doesn't guarantee that it will always converge. In other words, there's still a non-zero chance, no matter how small, that our sample average could be far from the population mean, even with a large number of observations. The convergence is in probability, which means that if we were to repeat our sampling process over and over, most of our calculated sample averages would be close to the population mean, but we could still have some averages that are not.
+
+Imagine you're throwing darts at a dartboard, and each throw represents an observation. The WLLN suggests that as you throw more darts, the average position of the darts will probably get closer to the bullseye, but some throws might still be off-target.
+
+\subsubsection{Strong Law of Large Numbers (SLLN)}
+The SLLN takes this a step further and says that the sample average will not just probably, but certainly (with probability 1), be equal to the population mean as the number of observations goes to infinity. This is a stronger statement because it tells us that the average of the observations will eventually converge to the population mean, and not just get close to it with high probability. This convergence is almost sure, meaning that if we were to observe the sampling process infinitely, the proportion of sample averages that differ from the population mean by any given amount would eventually shrink to zero.
+
+Using the dart analogy again, the SLLN would be like saying that if you could throw an infinite number of darts, the average position of all your throws would be exactly the bullseye, not just close to it.
+
+\subsubsection{In Summary}
+\begin{itemize}
+    \item \textbf{WLLN}: High probability of the sample mean being close to the population mean with a \textit{large but finite} number of samples.
+    \item \textbf{SLLN}: Certainty that the sample mean will equal the population mean with an \textit{infinite} number of samples.
+\end{itemize}
+
+
+\end{document}
