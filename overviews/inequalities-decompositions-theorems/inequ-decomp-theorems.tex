@@ -302,5 +302,21 @@ Using the dart analogy again, the SLLN would be like saying that if you could th
     \item \textbf{SLLN}: Certainty that the sample mean will equal the population mean with an \textit{infinite} number of samples.
 \end{itemize}
 
+\section{Hammersley–Clifford Theorem}
+
+\subsection{Statement}
+The Hammersley–Clifford Theorem is a foundational result in the field of graphical models and probability theory. It states that a probability distribution obeys the Markov properties with respect to an undirected graph if and only if it can be represented as a product of potential functions that are defined over the cliques of the graph. Mathematically, for a probability distribution \(P\) over a set of random variables \(X = \{X_1, X_2, \ldots, X_n\}\) and an undirected graph \(G\) with vertices corresponding to \(X\), the theorem asserts that \(P\) is Markov with respect to \(G\) if and only if there exists a representation of \(P\) as:
+\[ P(X) = \frac{1}{Z} \prod_{C \in \mathcal{C}(G)} \phi_C(X_C), \]
+where \(\mathcal{C}(G)\) denotes the set of cliques in \(G\), \(\phi_C\) are the potential functions associated with each clique \(C\), \(X_C\) are the variables in clique \(C\), and \(Z\) is a normalization constant ensuring that \(P\) sums to 1 over all possible values of \(X\).
+
+\subsection{Importance and Use Cases}
+This theorem is crucial for understanding the structure and factorization properties of probabilistic graphical models, such as Markov random fields (MRFs) and Bayesian networks. It provides a theoretical basis for the decomposition of complex joint distributions into simpler, local components, facilitating efficient computation of probabilities and inference. Applications include image processing, statistical physics, spatial statistics, and machine learning, where modeling complex dependencies between variables is essential.
+
+\subsection{Intuition}
+The intuition behind the Hammersley–Clifford Theorem is that the dependencies between variables in a probabilistic model can be captured by the graph structure, with edges representing direct interactions. The theorem formalizes the idea that the joint distribution of a set of variables with respect to a graph can be broken down into factors that depend only on subsets of variables that form cliques. This decomposition aligns with the notion that the global properties of a system can be understood through its local interactions.
+
+\subsection{History}
+The theorem is named after John Hammersley and Peter Clifford, who formulated and proved it in the 1970s. It built upon earlier work in statistical physics and graph theory, bridging these fields by formalizing the relationship between graph structures and probability distributions. The theorem has since become a cornerstone in the study of graphical models, underpinning much of the modern theoretical and applied work in areas requiring the representation and analysis of complex probabilistic relationships.
+
 
 \end{document}

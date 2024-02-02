@@ -425,6 +425,23 @@ $$
     \item \textbf{Diagnostic Tools:} Various tools are used to estimate when the chain has converged, thus determining the burn-in period length.
 \end{itemize}
 
+\subsubsection{What is MCMC mixing?}
+
+MCMC is a method for sampling from a given probability distribution called the “target” distribution. It works by making a series random moves from its current position, causing it to wander around and explore a range of parameter values. The series of values that we end up with is referred to as a “chain”. The probabilities of the random moves are carefully chosen to ensure that the length of time spent in any given parameter value is proportional to its probability under the target distribution. In a Bayesian setting the target distribution is almost always the posterior distribution.
+
+However, draws from the target distribution are not independent, as the next value in the chain depends on the current value. This leads to auto-correlation, which can cause the chain to move slowly and sluggishly through the space. If the chain is too sluggish then it may end up spending too much time in one region of parameter space by pure chance, meaning we end up with a skewed picture of the posterior distribution. In more severe cases we might find that there are large “valleys” in the target distribution that the chain struggles to cross, in which case some parts of the posterior might be missed entirely. Both of these situations are referred to as bad \textit{mixing}.
+
+There are several factors that influence mixing, including:
+
+\begin{itemize}
+    \item The shape of the target distribution
+    \item The level of correlation between parameters
+    \item The exact MCMC algorithm used
+    \item The parameters of the “proposal” distribution (under certain algorithms)
+    \item The type of proposal(s)
+\end{itemize}
+The first two factors are structural, in that they are a consequence of the mathematical model assumed, but the last three are algorithmic and can be modified by varying the MCMC approach.
+
 \subsubsection{Why It Matters}
 
 \begin{itemize}
@@ -432,23 +449,14 @@ $$
     \item \textbf{Efficiency:} Discarding burn-in samples is crucial for the efficiency and reliability of statistical estimates from MCMC methods.
 \end{itemize}
 
-\subsection{Understanding MCMC Variance and Effective Sample Size}
-\subsubsection{Burn-in Period}
-The burn-in period in MCMC simulations is an initial phase where samples are not yet representative of the target distribution. These samples are usually discarded because they may be influenced by the initial conditions of the Markov chain.
-
-\begin{itemize}
-    \item Definition: The initial set of samples in an MCMC simulation before the chain reaches equilibrium.
-    \item Purpose: To allow the Markov chain to reach a state where the samples are independent of the initial conditions.
-    \item Impact: Samples from the burn-in period are typically not used for statistical inference or for estimating the properties of the target distribution.
-\end{itemize}
-
+\subsection{Effective Sample Size}
 \subsubsection{Effective Sample Size (ESS)}
 The Effective Sample Size (ESS) is a critical measure used to assess the quality of samples obtained from an MCMC method.
 
 \begin{itemize}
-    \item Definition: ESS is the number of independent samples that would provide the same information as the correlated samples from the MCMC simulation.
-    \item Importance: It quantifies the amount of information contained in the correlated samples.
-    \item Calculation: ESS takes into account the variance of the target distribution and the autocorrelation between samples.
+    \item \textbf{Definition}: \textbf{ESS is the number of independent samples that would provide the same information as the correlated samples from the MCMC simulation.}
+    \item \textbf{Importance}: It quantifies the amount of information contained in the correlated samples.
+    \item \textbf{Calculation}: ESS takes into account the variance of the target distribution and the autocorrelation between samples.
 \end{itemize}
 
 \subsubsection{Autocorrelation and MCMC Efficiency}
@@ -457,7 +465,6 @@ Autocorrelation between MCMC samples reduces the amount of information each samp
 \begin{itemize}
     \item Definition: Autocorrelation measures the correlation of a signal with a delayed copy of itself as a function of delay.
     \item Impact: High autocorrelation indicates redundancy among samples and leads to a lower ESS.
-    \item Adjustment: The Integrated Autocorrelation Time (IACT) is used to adjust the ESS to account for autocorrelation.
 \end{itemize}
 
 \subsubsection{Computational Considerations}
@@ -575,5 +582,8 @@ $$
 \hat{B}_{m, m^{\prime}}=\frac{\sum_t\left(\frac{\pi\left(\theta^{(2, t)} \mid m\right) p\left(y \mid \theta^{(2, t)}, m\right)}{\pi\left(\theta^{(2, t)} \mid m^{\prime}\right) p\left(y \mid \theta^{(2, t)}, m^{\prime}\right)}\right)^{1 / 2}}{\sum_t\left(\frac{\pi\left(\theta^{(1, t)} \mid m^{\prime}\right) p\left(y \mid \theta^{(1, t)}, m^{\prime}\right)}{\pi\left(\theta^{(1, t)} \mid m\right) p\left(y \mid \theta^{(1, t)}, m\right)}\right)^{1 / 2}},
 $$
 fairly stable and close to the state of the art for simple generic estimators. 
+
+\section{Likelihood-free methods: Approximate Bayesian Computation}
+For this section see the overview in on ABC in the overview folder. :) 
 
 \end{document}

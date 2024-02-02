@@ -12,6 +12,88 @@
 
 \begin{document}
 \maketitle
+\section{An introduction to Markov chain Monte Carlo Methods}
+\subsection{Markov Chains}
+Let $\left\{X_t\right\}_{t=0}^{\infty}$ be a homogeneous Markov chain of random variables on $\Omega$ with starting distribution $X_0 \sim p^{(0)}$ and transition probability matrix $P=\left(P_{i, j}\right)_{i, j \in \Omega}$ with
+$$
+P_{i, j}=\mathbb{P}\left(X_{t+1}=j \mid X_t=i\right) .
+$$
+
+Denote by $P_{i, j}^{(n)}$ the $n$-step transition probabilities
+$$
+P_{i, j}^{(n)}=\mathbb{P}\left(X_{t+n}=j \mid X_t=i\right)
+$$
+and by $p_i^{(n)}=\mathbb{P}\left(X_n=i\right)$, with $p^{(n)}$ a row vector.
+The transition matrix $P$ is irreducible if and only if, for each pair of states $i, j \in \Omega$ there is $n$ such that $P_{i, j}^{(n)}>0$. 
+\newline
+\textbf{Intuition} \newline
+Imagine a city with many different places you could visit — these places are like the "states" in a state space \( \Omega \). Now, the roads between these places are like the probabilities in the transition matrix \( P \). When you're at one place (state \( i \)), you can take various roads (transitions) to get to other places (states). Some roads might take you directly to your destination, while others might require you to pass through multiple locations before reaching your end point.
+
+The city is considered "connected" (or in our case, the transition matrix \( P \) is "irreducible") if you can eventually get from any place to any other place, possibly via a series of roads. It doesn't matter how many intermediate stops (transitions) you need to make; what matters is that it's possible to reach any destination from any starting point. 
+
+In mathematical terms, for each pair of states \( i \) and \( j \), there exists some number of steps \( n \) such that you can get from state \( i \) to state \( j \) with a positive probability after exactly \( n \) steps. This is what \( P_{i, j}^{(n)}>0 \) represents — there's a road (sequence of transitions) you can follow to go from place \( i \) to place \( j \) in \( n \) steps with a probability greater than zero. If this is true for every pair of places in the city, then there are no isolated parts of the city, and you have the freedom to eventually reach any location from any starting point.
+
+
+The Markov chain is aperiodic if $P_{i, j}^{(n)}$ is non zero for all sufficiently large $n$.
+\newline
+\textbf{Intuition} \newline
+Imagine that you have a routine for your walk. If your routine is very strict, such as going around the block every 3 days and only every 3 days, then your walking schedule is periodic with a period of 3 days. You can predict exactly which days you'll be walking. In the context of a Markov chain, this would be like saying that you can only transition from state \( i \) to state \( j \) every \( k \) steps (where \( k \) is the period).
+
+Now, let's say you shake things up a bit. You still go for walks regularly, but now there's no strict pattern. Some weeks you might walk around the block after 2 days, sometimes after 5 days, and other times even consecutive days. If someone were to observe your walking schedule, they wouldn't be able to discern a repeating pattern that dictates when you'll walk. In essence, you have an \textit{aperiodic} walking schedule.
+
+Translating this back to Markov chains, if the chain is \textit{aperiodic}, it means that once you're in state \( i \), the probability of being in state \( j \) isn't restricted to a fixed number of steps. For all sufficiently large numbers of steps \( n \), there's a chance (non-zero probability) you could transition from state \( i \) to state \( j \). There's no fixed cycle dictating when these transitions must happen, just like your \textit{aperiodic} walking schedule.
+
+\subsubsection{Stationary Distribution and detailed Balance}
+When we come to apply the MCMC methods to Bayesian inference, the target distribution will be the posterior $p(\theta)=\pi(\theta \mid y)$.
+The probability mass function (PMF) $p_i, i \in \Omega, \sum_{i \in \Omega} p_i=1$ is a \textbf{stationary} distribution of $P$ if $p P=p$ in the following sense. If $p^{(0)}=p$ then by the partition theorem for probability (PTP),
+$$
+p_j^{(1)}=\sum_{i \in \Omega} p_i^{(0)} P_{i, j},
+$$
+so $p_j^{(1)}=p_j$ also. Iterating, $p^{(t)}=p$ for each $t=1,2, \ldots$ in the chain, so the distribution of \textbf{$X_t \sim p^{(t)}$ doesn't change with $t$, it is stationary.}
+\newline
+\textbf{Detailed balance (discrete case)}: If there is a probability mass function $p_i, i \in \Omega$ satisfying $\sum_{i \in \Omega} p_i=1$ and
+$$
+p_i P_{i, j}=p_j P_{j, i} \quad \text { holds for all } i, j \in \Omega,
+$$
+then $P$ and $p$ satisfy detailed balance.
+\newline
+\newline
+\textbf{Detailed balance is sufficient for stationarity}, and it is much easier to check than $p P=p$ as it is a simple algebraic relation. A Markov chain satisfying DB is \textbf{reversible}.
+
+
+\subsubsection{Convergence and Ergodic Theorem}
+\textbf{Intuitive Explanation}
+\newline
+To intuitively understand the Ergodic Theorem for Markov chains, let's compare it to a very diligent birdwatcher.
+
+Imagine a birdwatcher who wants to understand the proportion of time different bird species spend in various areas of a large park. Each area of the park represents a state in the Markov chain, and each bird species can move from one area to another, representing transitions between states. The birdwatcher notes these transitions and is trying to calculate the average time spent in each area by the birds.
+
+If the park is designed in such a way (irreducible) that a bird can eventually get from any area to any other area, and there's no set pattern to their movement (aperiodic), then over a long period of observation (as \( T \) approaches infinity), the birdwatcher will notice that the proportion of time the birds spend in each area will settle down to a stable pattern. This stable pattern represents the true distribution of where the birds spend their time.
+
+The Ergodic Theorem tells us that the birdwatcher's long-term observations (the average time the birds are noted in each area) will almost surely converge to the true, underlying distribution of the bird's presence across the park, no matter where the birds started from. This is the essence of what ergodicity means in this context: long-term observations reflect the true characteristics of the system.
+\newline
+\textbf{Mathematical Explanation}
+\newline
+Mathematically, the Ergodic Theorem is a formal statement about the long-term behavior of Markov chains. Here's a breakdown:
+\begin{itemize}
+    \item \textbf{Irreducible}: The Markov chain can go from any state to any other state in a finite number of steps.
+    \item \textbf{Aperiodic}: The system doesn't operate in a fixed cycle; transitions between states can happen at any time.
+    \item \textbf{Finite State Space \( \Omega :\)} There's a limited number of states that the system can be in.
+    \item \textbf{Detailed Balance}: Each transition between states is in a sort of equilibrium with its reverse transition, weighted by the stationary distribution \( p \).
+    \item \textbf{Bounded Function}: \( f \) The function \( f \) gives us a numeric value for each state, and its values are limited within a certain range.
+\end{itemize}
+
+
+Theorem states that for such a Markov chain, the time average of function \( f \) over the states \( X_t \) that the chain visits (denoted \( \hat{f}_T \)) will converge almost surely (which means with probability 1) to the expected value of \( f \) under the stationary distribution \( p \) as time \( T \) goes to infinity.
+
+In other words, if you observe the system for a long time and calculate the average value of some property (given by the function \( f \)) of the states visited by the Markov chain, this average will eventually be the same as the average value of that property if you were to sample from the states according to their true long-term probabilities \( p \).
+
+The "almost surely" part is a technical term in probability theory that means the convergence will happen with certainty, although there might be some rare and exceptional sample paths for which it does not happen.
+
+This theorem is critical because it justifies using long Markov chain simulations to estimate averages that are otherwise difficult to compute, especially in complex systems like those found in statistical physics, economics, and many fields of engineering.
+\newline
+The more general statement covering continuous target distributions asks for a positive or Harris recurrent chain. The conditions are simpler here because we are assuming a finite state space for the Markov chain (not just countable).
+We would really like to have a CLT for $\hat{f}_n$ formed from the Markov chain output, so we have confidence intervals $\pm \sqrt{\operatorname{var}\left(\hat{f}_n\right)}$ as well as the central point estimate $\hat{f}_n$ itself. CLT's hold for all the examples in this course. 
 
 
 \section{Discrete-time Stochastic Processes}
@@ -343,12 +425,6 @@ where $\mathcal{B}\left(\mathbb{X}^{2} \rightarrow \mathbb{R}\right)$ refers to 
 
 \subsection{Detailed balance implies reversibility}
 If a Markov chain has a transition kernel $K$ satisfying the detailed balance condition for some distribution $\pi$ , then the chain is reversible with respect to $\pi$.
-
-
-
-
-
-
 
 \section{Selected Convergence Results}
 \subsection{A Simple Ergodic Theorem}

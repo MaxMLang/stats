@@ -259,4 +259,52 @@ is consistent through the strong law of large numbers as long as \( \mathbb{E}_q
     \caption{Sample weights obtained for 1000 realisations of $X_i$, using proposals $\pi$ (left), $q_1$ (middle) or $q_2$ (right).}
     \label{fig:nis_weights}
 \end{figure}
+
+\section{MCMC}
+We will start describing Markov chain Monte Carlo methods. These methods are used to approximate high-dimensional expectations
+$$
+\mathrm{E}_\pi(\phi(X))=\int_{\mathbf{X}} \phi(x) \pi(x) d x
+$$
+Gibbs sampling and Metropolis-Hastings constitute the two main Markov chain Monte Carlo methods, from which most of the other methods derive. 
+\subsection{Gibbs Samplings}
+
+
+\subsubsection{Intuitive Explanation:}
+
+The Gibbs sampler is a method used to generate samples from a complex, multidimensional distribution when direct sampling is difficult. Imagine you're at a buffet with a vast array of dishes (each dish represents a dimension of your distribution), and your plate can only fit a small amount of each type (representing a sample point). The idea is to start with some food on your plate (an initial sample) and then proceed through the buffet, replacing one dish at a time with a new serving, chosen based on what's already on your plate (updating one dimension at a time based on the current sample).
+
+\subsubsection{Mathematical Explanation / Definition:}
+
+Mathematically, the Gibbs sampler is a Markov Chain Monte Carlo (MCMC) algorithm. For a target distribution \( \pi \) defined over a multidimensional space, it creates a Markov chain that has \( \pi \) as its equilibrium distribution. 
+
+The key principle is conditional sampling. Given a current state \( x = (x_1, x_2, ..., x_d) \), you sample each component \( x_i \) from its conditional distribution given all other components \( x_{-i} = (x_1, ..., x_{i-1}, x_{i+1}, ..., x_d) \), effectively "sweeping" through all dimensions one by one.
+
+\subsubsection{Stepwise Process:}
+\begin{itemize}
+    \item \textbf{Initialization:} Start with an initial state \( x^{(1)} = (x^{(1)}_1, ..., x^{(1)}_d) \).
+    \item  \textbf{Iterative Sampling:}
+    \begin{itemize}
+        \item For each iteration \( t = 2, 3, ... \):
+    \end{itemize}
+    \begin{itemize}
+        \item Sample \( x^{(t)}_1 \) from its conditional distribution given the current values of all other components: \( x^{(t)}_1 \sim \pi(x_1 | x^{(t-1)}_2, ..., x^{(t-1)}_d) \). 
+    \end{itemize}
+    \begin{itemize}
+        \item Proceed to sample \( x^{(t)}_2 \) from \( \pi(x_2 | x^{(t)}_1, x^{(t-1)}_3, ..., x^{(t-1)}_d) \), and so on for each subsequent dimension.
+    \end{itemize}
+    \begin{itemize}
+        \item Continue this process until all components have been updated to obtain the new state \( x^{(t)} \).
+    \end{itemize}
+\end{itemize}
+
+
+This sampling process is repeated for many iterations, and under certain conditions, the distribution of \( x^{(t)} \) will converge to the target distribution \( \pi \). The samples thus generated can be used to estimate various properties of \( \pi \), such as means, variances, and probabilities of events.
+
+\subsubsection{Remarks:}
+\begin{itemize}
+    \item The Gibbs sampler is particularly useful when the conditional distributions are easier to sample from than the target distribution.
+    \item As a rule of thumb, Gibbs samplers where the number of components (dimensions) \( d \) is the smallest are usually favored because they tend to mix faster and require less computation per iteration.
+\end{itemize}
+
+
 \end{document}

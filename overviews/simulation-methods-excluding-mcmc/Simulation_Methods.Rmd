@@ -1,0 +1,374 @@
+---
+title: "Transformation Methods"
+author: "Max Lang"
+date: "2024-01-24"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Box-Muller Algorithm
+## R
+```{r cars}
+library(ggplot2)
+
+generate_normal_random_pair <- function() {
+  # Step 1: Generate two independent random numbers from uniform distribution
+  U1 <- runif(1)
+  U2 <- runif(1)
+
+  # Step 2: Apply the Box-Muller transformation
+  Z0 <- sqrt(-2 * log(U1)) * cos(2 * pi * U2)
+  Z1 <- sqrt(-2 * log(U1)) * sin(2 * pi * U2)
+
+  return(c(Z0, Z1))
+}
+
+
+
+# Generate a large number of samples
+samples <- replicate(10000, generate_normal_random_pair())
+flat_samples <- as.vector(samples)
+
+# Plotting
+ggplot() + 
+  geom_histogram(aes(flat_samples, ..density..), bins = 30, alpha = 0.5) +
+  geom_density(aes(flat_samples), color = "blue") +
+  labs(title = "Histogram and Density of Generated Random Variables")
+
+```
+## Python
+```{python}
+import math
+import random
+import matplotlib.pyplot as plt
+import numpy as np
+from scipy.stats import gaussian_kde
+
+def generate_normal_random_pair():
+    # Step 1: Generate two independent random numbers from uniform distribution
+    U1, U2 = random.random(), random.random()
+
+    # Step 2: Apply the Box-Muller transformation
+    factor = math.sqrt(-2 * math.log(U1))
+    Z0 = factor * math.cos(2 * math.pi * U2)
+    Z1 = factor * math.sin(2 * math.pi * U2)
+
+    return Z0, Z1
+  
+  
+
+# Generate a large number of samples
+samples = [generate_normal_random_pair() for _ in range(10000)]
+flat_samples = [val for sublist in samples for val in sublist]
+
+# Kernel Density Estimate
+density = gaussian_kde(flat_samples)
+xs = np.linspace(min(flat_samples), max(flat_samples), 200)
+
+# Plotting
+plt.figure(figsize=(10, 6))
+plt.hist(flat_samples, bins=30, density=True, alpha=0.5, label='Histogram')
+plt.plot(xs, density(xs), label='KDE')
+plt.title('Histogram and KDE of Generated Random Variables')
+plt.legend()
+plt.show()
+
+
+
+```
+# Transformation methods
+## Gamma & Beta Distribution
+### R
+```{r}
+
+alpha <- 3
+beta <- 2
+# Gamma distribution in R
+gamma_samples <- rgamma(10000, shape = alpha, rate = beta)
+
+# Beta distribution in R
+beta_samples <- rbeta(10000, shape1 = alpha, shape2 = beta)
+
+# Visualization in R using ggplot2
+library(ggplot2)
+
+# Function to visualize distribution in R
+visualize_distribution <- function(samples, title) {
+  ggplot(data.frame(x = samples), aes(x)) + 
+    geom_histogram(aes(y = ..density..), bins = 30, alpha = 0.5) + 
+    geom_density(colour = "blue") + 
+    ggtitle(title)
+}
+
+# Visualize Gamma distribution
+visualize_distribution(gamma_samples, "Gamma Distribution")
+```
+```{r}
+# Visualize Beta distribution
+visualize_distribution(beta_samples, "Beta Distribution")
+```
+
+### Python
+```{python}
+import numpy as np
+import matplotlib.pyplot as plt
+from scipy.stats import gamma
+
+# Generate gamma-distributed random variable
+def generate_gamma(alpha, beta, n):
+    Y = np.random.exponential(scale=1/beta, size=(n, alpha))
+    X = np.sum(Y, axis=1)
+    return X
+
+# Visualization in Python
+def visualize_distribution(samples, title):
+    density = gaussian_kde(samples)
+    xs = np.linspace(min(samples), max(samples), 200)
+    plt.figure(figsize=(10, 6))
+    plt.hist(samples, bins=30, density=True, alpha=0.5, label='Histogram')
+    plt.plot(xs, density(xs), label='KDE')
+    plt.title(title)
+    plt.legend()
+    plt.show()
+    
+# Parameters for Gamma distribution
+alpha, beta = 2, 2  # Example parameters
+samples_gamma = generate_gamma(alpha, beta, 10000)
+visualize_distribution(samples_gamma, 'Gamma Distribution')
+```
+
+```{python}
+
+
+from scipy.stats import beta
+
+# Generate beta-distributed random variable
+def generate_beta(alpha, beta, n):
+    X1 = generate_gamma(alpha, 1, n)
+    X2 = generate_gamma(beta, 1, n)
+    X = X1 / (X1 + X2)
+    return X
+
+# Parameters for Beta distribution
+alpha, beta = 2, 5  # Example parameters
+samples_beta = generate_beta(alpha, beta, 10000)
+visualize_distribution(samples_beta, 'Beta Distribution')
+```
+
+# Metropolis Hastings Algortihm
+```{r}
+pi_theta <-function(x,mu1,mu2,S1i,S2i,p1=0.5) {
+  #mixture of normals, density up to constant factor
+  c1<-exp(-t(x-mu1)%*%S1i%*%(x-mu1))
+  c2<-exp(-t(x-mu2)%*%S2i%*%(x-mu2))
+  return(p1*c1+(1-p1)*c2)
+}
+
+mcmc.binorm<-function(n,a,x0,mu1,mu2,S1i,S2i) {
+  X=matrix(NA,n,2); X[1,]=x=x0;
+  for (t in 1:(n-1)) {
+    y<-x+(2*runif(2)-1)*a
+    MHR<-pi_theta(y,mu1,mu2,S1i,S2i)/pi_theta(x,mu1,mu2,S1i,S2i)
+    if (runif(1)<MHR) x<-y
+    X[t+1,]<-x
+  }
+  return(X)
+}
+
+
+
+# Parameters for MCMC
+mu1 <- c(1, 1)
+mu2 <- c(4, 4)
+S <- diag(2)
+S1i <- S2i <- solve(S)
+a_init <- 1
+
+mu1=c(1,1); mu2=c(4,4); S=diag(2); S1i=S2i=solve(S);
+X<-mcmc.binorm(a=a_init,n=10000,x0=mu1,mu1,mu2,S1i,S2i)
+
+plot(X[1:2000,1],pch=16,type='l',main='',xlab='MCMC step t=1,2,3,...',ylab='MCMC state X[1]_t')
+plot(X,pch=16,ann=F)
+m=30; u=seq(-2,7,length.out=m); v=u; z=matrix(NA,m,m); 
+for (i in 1:m) { 
+  for (j in 1:m) { 
+    z[i,j]=pi_theta(c(u[i],v[j]),mu1,mu2,S1i,S2i) 
+  } 
+}
+contour(u,v,z,col=2,nlevels=7,add=T,lwd=2)
+
+```
+
+```{r}
+
+mcmc.binorm.tuned <- function(n, a_init, x0, mu1, mu2, S1i, S2i, target_rate = 0.234, tune_interval = 100, tune_cycles = 10) {
+  X = matrix(NA, n, 2)
+  X[1,] = x = x0
+  a = a_init
+  acceptance_count = 0
+  
+  for (t in 1:(n-1)) {
+    y <- x + (2 * runif(2) - 1) * a
+    MHR <- pi_theta(y, mu1, mu2, S1i, S2i) / pi_theta(x, mu1, mu2, S1i, S2i)
+    if (runif(1) < MHR) {
+      x <- y
+      acceptance_count <- acceptance_count + 1
+    }
+    X[t+1,] <- x
+
+    if ((t %% tune_interval) == 0 && t/tune_interval <= tune_cycles) {
+      acceptance_rate = acceptance_count / tune_interval
+      if (acceptance_rate < target_rate) {
+        a <- a * 0.9
+      } else if (acceptance_rate > target_rate) {
+        a <- a * 1.1
+      }
+      acceptance_count <- 0
+    }
+  }
+  
+  list(samples = X, final_a = a)
+}
+
+result <- mcmc.binorm.tuned(n = 10000, a_init = a_init, x0 = mu1, mu1 = mu1, mu2 = mu2, S1i = S1i, S2i = S2i)
+
+# Extract final tuning parameter 'a'
+final_a <- result$final_a
+
+# Extract the samples
+X_tuned <- result$samples
+
+
+plot(X_tuned[1:2000,1],pch=16,type='l',main='',xlab='MCMC step t=1,2,3,...',ylab='MCMC state X[1]_t')
+plot(X_tuned,pch=16,ann=F)
+m=30; u=seq(-2,7,length.out=m); v=u; z=matrix(NA,m,m); 
+for (i in 1:m) { 
+  for (j in 1:m) { 
+    z[i,j]=pi_theta(c(u[i],v[j]),mu1,mu2,S1i,S2i) 
+  } 
+}
+contour(u,v,z,col=2,nlevels=7,add=T,lwd=2)
+```
+
+```{r}
+mcmc.binorm.robbins.monro <- function(n, a_init, x0, mu1, mu2, S1i, S2i, target_rate = 0.234, batch_size = 100, gamma_init = 0.1, gamma_decrease = 0.9) {
+  X = matrix(NA, n, 2)
+  X[1,] = x = x0
+  a = a_init
+  gamma = gamma_init
+  acceptance_count = 0
+  
+  for (t in 1:(n-1)) {
+    y <- x + (2 * runif(2) - 1) * a
+    MHR <- pi_theta(y, mu1, mu2, S1i, S2i) / pi_theta(x, mu1, mu2, S1i, S2i)
+    if (runif(1) < MHR) {
+      x <- y
+      acceptance_count <- acceptance_count + 1
+    }
+    X[t+1,] <- x
+    
+    # Update 'a' at the end of each batch using Robbins-Monro
+    if ((t %% batch_size) == 0) {
+      acceptance_rate = acceptance_count / batch_size
+      a <- a + gamma * (acceptance_rate - target_rate)
+      gamma <- gamma * gamma_decrease
+      acceptance_count <- 0
+    }
+  }
+  
+  list(samples = X, final_a = a)
+}
+
+# Parameters for MCMC
+mu1 <- c(1, 1)
+mu2 <- c(4, 4)
+S <- diag(2)
+S1i <- S2i <- solve(S)
+a_init <- 1
+
+# Run Robbins-Monro tuned MCMC
+set.seed(123) # For reproducibility
+result <- mcmc.binorm.robbins.monro(n = 10000, a_init = a_init, x0 = mu1, mu1 = mu1, mu2 = mu2, S1i = S1i, S2i = S2i)
+
+# Extract final tuning parameter 'a'
+final_a_rm <- result$final_a
+
+# Extract the samples
+X_rm <- result$samples
+
+
+plot(X_rm[1:2000,1],pch=16,type='l',main='',xlab='MCMC step t=1,2,3,...',ylab='MCMC state X[1]_t')
+plot(X_rm,pch=16,ann=F)
+m=30; u=seq(-2,7,length.out=m); v=u; z=matrix(NA,m,m); 
+for (i in 1:m) { 
+  for (j in 1:m) { 
+    z[i,j]=pi_theta(c(u[i],v[j]),mu1,mu2,S1i,S2i) 
+  } 
+}
+contour(u,v,z,col=2,nlevels=7,add=T,lwd=2)
+```
+
+
+
+```{python}
+import numpy as np
+import scipy.stats as stats
+import matplotlib.pyplot as plt
+
+# Metropolis-Hastings algorithm for a bivariate normal distribution in Python
+
+def mh_bivariate_normal(mu, sigma, a, num_samples):
+    samples = np.zeros((num_samples, 2))
+    samples[0] = mu # Initial sample
+    
+    for i in range(1, num_samples):
+        current_sample = samples[i-1]
+        # Propose a new sample
+        proposal = current_sample + a * np.random.normal(size=2)
+        # Calculate acceptance probability
+        p_accept = min(1, stats.multivariate_normal.pdf(proposal, mean=mu, cov=sigma) / 
+                       stats.multivariate_normal.pdf(current_sample, mean=mu, cov=sigma))
+        # Accept or reject the new sample
+        if np.random.rand() < p_accept:
+            samples[i] = proposal
+        else:
+            samples[i] = current_sample
+    
+    return samples
+
+# Parameters
+mu = np.array([1, 1])
+sigma = np.array([[1, 0], [0, 1]]) # Identity matrix
+a = 0.5
+num_samples = 2000
+
+# Generate samples
+np.random.seed(42) # For reproducibility
+sampled_points = mh_bivariate_normal(mu, sigma, a, num_samples)
+
+# Visualization: Plot of the sampled points over iterations
+plt.figure(figsize=(12, 6))
+
+# Subplot 1: Trace for X_1 coordinate
+plt.subplot(1, 2, 1)
+plt.plot(sampled_points[:, 0], label='X_1 Coordinate')
+plt.xlabel('MCMC step')
+plt.ylabel('X_1 Value')
+plt.title('Trace of X_1 Coordinate')
+
+# Subplot 2: Visualization of X_1 and X_2 Coordinates
+plt.subplot(1, 2, 2)
+plt.scatter(sampled_points[:, 0], sampled_points[:, 1], alpha=0.5)
+plt.xlabel('X_1 Coordinate')
+plt.ylabel('X_2 Coordinate')
+plt.title('Bivariate Normal')
+plt.tight_layout()
+
+# Display the plots
+plt.show()
+
+```
+
