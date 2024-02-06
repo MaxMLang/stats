@@ -253,6 +253,20 @@ The theorem was established by Valery Glivenko and Francesco Paolo Cantelli in 1
 
 
 \section{Central Limit Theorems}
+\subsection{Lindeberg–Lévy Central Limit Theorem (CLT)}
+\subsubsection{Statement}
+The Lindeberg–Lévy Central Limit Theorem (CLT) asserts that if \( X_1, X_2, X_3, \ldots \) is a sequence of independent and identically distributed (i.i.d.) random variables with a common expected value \( E[X_i] = \mu \) and variance \( Var[X_i] = \sigma^2 < \infty \), then the normalized sum of these variables converges in distribution to a normal distribution. Mathematically, it states that as the sample size \( n \) approaches infinity, the standardized random variables \( \sqrt{n}(\bar{X}_n - \mu) \) converge in distribution to a standard normal distribution \( \mathcal{N}(0, \sigma^2) \), where \( \bar{X}_n \) is the sample mean of the first \( n \) variables.
+
+$\sqrt{n}\left(\bar{X}_n-\mu\right) \xrightarrow{a} \mathcal{N}\left(0, \sigma^2\right)$.
+
+\subsubsection{Importance and Use Cases}
+The Lindeberg–Lévy CLT is a fundamental theorem in probability and statistics, as it explains why normal distributions arise so commonly in practice, even when the underlying distribution of individual observations is not normal. It is used in hypothesis testing, confidence interval estimation, and in various applications across natural and social sciences where the normal approximation to other distributions is required.
+\subsubsection{Intuition}
+The essence of the CLT is that when independent random effects are added together, their normalized sum tends to form a normal distribution, regardless of the shape of their original distribution. This can be thought of as the "democratizing effect" of aggregation: individual peculiarities wash out, and the aggregate effect is a bell curve, which is robust to the original data's distribution.
+
+\subsubsection{History}
+The theorem was first introduced by the Swedish mathematician Jarl Waldemar Lindeberg and later refined by the French mathematician Paul Lévy, which is why it carries their names.
+
 \subsection{Weak Law of Large Numbers (WLLN)}
 
 \subsubsection{Statement}
