@@ -1,0 +1,201 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+
+\title{Overview of Bayesian Decision theory}
+\author{Max Lang}
+\maketitle
+
+
+\begin{document}
+\section{Intuitive introducing Examples}
+\subsection{Rewards}
+Imagine you're playing a video game where:
+\begin{itemize}
+    \item \textbf{Action (\(\delta\))}: Choosing a character or a strategy.
+    \item \textbf{Truth (\(\theta\))}: The level's difficulty or the opponent's strategy.
+    \item \textbf{Reward (\(r\))}: Points or achievements you earn for beating a level or an opponent.
+\end{itemize}
+
+In this context, the reward is what you gain from making a certain choice given a specific situation. If you choose a character that's strong against your opponent's choice (the truth), your reward is higher (you win more points).
+
+\subsection{Utility}
+Now, think about how satisfied you feel with the rewards you get:
+\begin{itemize}
+    \item \textbf{Reward (\(r\))}: Points or achievements from the game.
+    \item \textbf{Utility (\(U\))}: How happy or satisfied you feel with those points or achievements.
+\end{itemize}
+
+Utility is a bit like the ``happiness" or satisfaction you derive from the rewards. For example, if you really enjoy challenges, beating a difficult level might give you a lot of satisfaction (high utility), even if the actual points (reward) are the same as winning an easier level.
+
+\subsection{Choosing a Dessert}
+Let's say you're deciding between two desserts: ice cream and cake.
+\begin{itemize}
+    \item \textbf{Action (\(\delta\))}: Choosing ice cream or cake.
+    \item \textbf{Truth (\(\theta\))}: How much you'll enjoy each dessert (which can depend on your mood, the quality of the dessert, etc.).
+    \item \textbf{Reward (\(r\))}: The pleasure you get from eating the dessert.
+    \item \textbf{Utility (\(U\))}: Your overall satisfaction or happiness from that pleasure, considering factors like dietary restrictions, health goals, or how the dessert fits into your meal.
+\end{itemize}
+
+If you choose ice cream and really enjoy it, your reward is the pleasure of eating it. The utility is how this pleasure contributes to your overall happiness, maybe giving you a big boost if it's a hot day and the ice cream is particularly refreshing, or less so if you're lactose intolerant and have to deal with discomfort afterward.
+
+\section{Decision Making: Expected Utility}
+\subsection{Intuition}
+When deciding between ice cream and cake, you might think about:
+\begin{itemize}
+    \item How much you usually enjoy each (the expected reward).
+    \item How each choice aligns with your health goals, how guilty or happy you might feel afterward, etc. (the expected utility).
+\end{itemize}
+
+Choosing the dessert with the highest expected utility means picking the one that, considering everything, you think will make you happiest or most satisfied overall, even if it's not necessarily the one you'd enjoy the most in the moment.
+\subsection{Definition Utility}
+Utility $U(r), r \in \mathbb{R}$ is the opposite of loss. In terms of our notation in Section 1.3.2,
+$$
+L(\theta, \delta)=c-U(r(\theta, \delta)),
+$$
+with $c$ the largest attainable value taken by $U$. We are replacing one function $L$ by two, $U$ and $r$, which must be elicited.
+\subsection{Definition Expected Utility}
+The expected utility of the action $\delta$ at fixed $y$ (for continuous rewards) is
+$$
+E_{P_{\delta, y}}(U(R))=\int_{\mathbb{R}} U(r) P_{\delta, y}(r) d r
+$$
+
+The expected utility has the opposite sign to the expected posterior loss:
+$$
+\begin{aligned}
+\left.E_{P_{\delta, y}}(U(R))\right) & =E_{\theta \mid y}(U(r(\theta, \delta))) \\
+& =c-\int_{\Omega} L(\theta, \delta) \pi(\theta \mid y) d \theta
+\end{aligned}
+$$
+
+\section{Coherence}
+Coherence is about ensuring our beliefs and decisions align logically with our goals and knowledge. Imagine you're planning a picnic and believe it might rain. If you act coherently, you'd prepare for potential rain by bringing an umbrella or choosing an indoor location, based on your belief and desire to have a pleasant picnic. Coherence means your actions (like taking an umbrella) are consistent with your beliefs (chance of rain) and goals (enjoying the picnic), demonstrating a rational link between what you believe, what you want, and how you act to achieve it.
+
+Coherent inference chooses the action $\hat{\delta}$ that maximises the expected utility, so we choose
+$$
+\hat{\delta}=\arg \max _{\delta \in \mathcal{D}} E_{P_\delta}(U(r)) .
+$$
+
+Consider two sets, $A, B \in \mathcal{B}_{\Omega}$ so $A, B \subseteq \Omega$, action space $\delta \in\{A, B\}$, reward $r(\theta, \delta)=\mathbb{I}_{\theta \in \delta}$ and utility $U(0)=0, U(1)=u$ for $u>0$. The reward distribution, $P_\delta=\left(P_\delta(0), P_\delta(1)\right)$, for action $\delta=A$ under our prior is
+$$
+P_\delta=(1-\pi(A), \pi(A))
+$$
+
+The expected utility $E_\theta(U(r(\theta, \delta))), \theta \sim \pi(\cdot)$ of the action $\delta=A$ is
+$$
+\begin{aligned}
+E_\theta(U(r(\theta, \delta))) & =P_\delta(0) U(0)+P_\delta(1) U(1) \\
+& =u \pi(A),
+\end{aligned}
+$$
+so we maximise expected utility by choosing $A$ if $\pi(A)>\pi(B)$.
+Write $A>B$ if $\pi(A)>\pi(B)$ and $A \sim B$ if $\pi(A)=\pi(B)$. If we start with a preference order $<, \sim,>$ over sets, then we seek a prior probability distribution satisfying
+$$
+A>B \Rightarrow \pi(A)>\pi(B)
+$$
+for every pair of sets $A, B \in \mathcal{B}_{\Omega}$ and similarly for the $<$ and $\sim$ relations. We say that the probability distribution $\pi(A), A \in \mathcal{B}_{\Omega}$ \textbf{expresses the preference order in this case}. If our preferences $\langle, \sim$, on sets of outcomes satisfy the Savage axioms for subjective probability (given below) then a prior expressing them exists and is unique. If the prior exists then reward distributions exist.
+
+The expected utility determines an ordering on reward distributions $P_\delta(r)$ and $P_{\delta^{\prime}}(r)$ of two actions $\delta, \delta^{\prime}$. Define a second set of order relations $>,<$, and $\sim$ satisfying
+$$
+P_\delta>P_{\delta^{\prime}} \quad \Leftrightarrow \quad E_{P_\delta}(U(r))>E_{P_{\delta^{\prime}}}(U(r)),
+$$
+and
+$$
+P_\delta \sim P_{\delta^{\prime}} \quad \Leftrightarrow \quad E_{P_\delta}(U(r))=E_{P_{\delta^{\prime}}}(U(r)) .
+$$
+
+If reward distributions exist and we start with a preference order over reward distributions, then the inference will be coherent if there exists a utility function expressing these preferences in terms of expected utility. We need to find a utility function $U$ that ensures
+$$
+P>P^{\prime} \quad \Rightarrow \quad E_P(U(R))>E_{P^{\prime}}(U(R)).
+$$
+
+
+\section{Ellsberg Paradox: Are human prior beliefs always coherent?}
+
+The Ellsberg Paradox, introduced by Daniel Ellsberg in 1961, highlights a contradiction in expected utility theory through a simple yet profound thought experiment involving bets on colored balls drawn from an urn. This paradox reveals our preference for known risks over unknown ones, even when the statistical outcomes are theoretically equivalent. It challenges the foundational assumptions of Bayesian decision theory, particularly around rationality and utility maximization in the face of ambiguity.
+
+\subsection{Intuitive Explanation}
+Imagine an urn filled with 90 balls: 30 are red, and the remaining 60 are a mix of black and yellow, but you don't know the exact proportion of black and yellow balls. You're given a choice between betting on the color of the ball that will be drawn: 
+\begin{itemize}
+    \item Gamble A: Win if a red ball is drawn.
+    \item Gamble B: Win if a black ball is drawn.
+\end{itemize}
+Most people prefer Gamble A over B because the probability of drawing a red ball (\(\frac{1}{3}\)) is known, making the risk calculable. However, when asked to choose between:
+\begin{itemize}
+    \item Gamble C: Win if the ball drawn is not black (either red or yellow).
+    \item Gamble D: Win if the ball drawn is not red (either black or yellow).
+\end{itemize}
+People tend to switch preferences, favoring the gamble involving the not-red option, even though the logical assessment of probabilities doesn't change. This inconsistency in choice underlines the Ellsberg Paradox.
+
+\subsection{Mathematical Explanation and Impact on Bayesian Decision Theory}
+The paradox demonstrates that \textbf{individuals' preferences violate the sure-thing principle}, part of the expected utility theory, which would require consistent choice patterns in similar risk scenarios. The key takeaway is our inherent aversion to ambiguity; we prefer known risks over unknowns, even when the unknowns might offer the same or better outcomes. This observation challenges the Bayesian framework, which assumes that decision-makers can form and act on subjective probabilities in a rational manner, irrespective of the ambiguity involved.
+
+\subsection{Historical Context}
+Daniel Ellsberg, better known for his role in releasing the Pentagon Papers, crafted this paradox to challenge the prevailing rational choice theory. His work built upon earlier concepts by J.M. Keynes and F.H. Knight, questioning the completeness and applicability of expected utility theory in explaining decision-making under uncertainty.
+
+\subsection{Main Takeaways}
+\begin{itemize}
+    \item \textbf{Ambiguity Aversion}: The paradox illustrates our discomfort with ambiguity, leading us to make decisions that favor known probabilities over unknown, even when it might not be logically justified.
+    \item \textbf{Challenges to Rational Choice Theory}: It suggests that traditional economic and decision theories might not fully account for human behavior in the face of uncertainty, prompting the development of alternative models like prospect theory.
+    \item \textbf{Implications Beyond Economics}: Understanding ambiguity aversion has practical implications in psychology, political science, and business, helping to better predict and influence decision-making processes in uncertain environments.
+\end{itemize}
+
+The Ellsberg Paradox remains a pivotal concept in behavioral economics, encouraging deeper exploration into how we perceive and react to risk and uncertainty. 
+
+\section{Allais Paradox: Challenging Expected Utility Theory}
+
+The Allais Paradox, introduced by Maurice Allais in the 1950s, presents a critical challenge to the expected utility theory which underpins much of Bayesian decision theory. Through simple lottery choices, it reveals inconsistencies in human decision-making that conflict with the rational agent model assumed by Bayesian theory.
+
+\subsection{Intuitive Explanation}
+Consider two sets of lotteries where the outcomes involve different probabilities of winning substantial monetary rewards. People's preferences between these lotteries often contradict the expected utility theory. The first choice involves a sure win versus a high probability of winning a larger amount, where people tend to prefer the sure win. The second choice presents a low probability of winning a large amount versus an even lower probability of winning an even larger amount, where preferences shift unpredictably.
+
+\subsection{Mathematical Explanation and Impact on Bayesian Decision Theory}
+Mathematically, the paradox showcases how preferences between lotteries cannot always be reconciled with a utility function that is expected to represent an individual's preferences under uncertainty. This discrepancy suggests that the principle of maximizing expected utility does not fully capture the nuances of human decision-making. The paradox thus challenges the Bayesian assumption that individuals possess coherent prior beliefs and make decisions by maximizing expected utility based on these beliefs.
+
+\subsubsection{Example}
+Our preferences may be inconsistent with any utility function. In this example the reward distributions are given, so the "prior" exists. Let $p=\left(p_1, p_2, p_3\right)$ be the probability you win respectively
+$$
+\left(r_1, r_2, r_3\right)=(£ 0, £ 500,000, £ 750,000) .
+$$
+
+In each of two rounds you have a choice between two lotteries.
+1. \textbf{(A)} with $p^{(A)}=(0,1,0)$ OR\textbf{ (B) }with $p^{(B)}=(0.01,0.89,0.1)$
+2. \textbf{(C)} with $p^{(C)}=(0.89,0.11,0)$ OR \textbf{(D) }with $p^{(D)}=(0.9,0,0.1)$
+so for example in the first round there are two lotteries. If you choose lottery (A) you get $£ 500 \mathrm{~K}$ guaranteed, while if you opt for (B) there is a small chance you go away with nothing, but also a $10 \%$ chance of making the big money, $£ 750 \mathrm{~K}$.
+
+Choices (B) and (D) maximise the expected return but that is not the same as expected utility, unless we had the identity function as a utility, which is unrealistic. Which lotteries would you choose? People commonly choose (A) for a sure thing, and (D) as there is a $1 \%$ higher chance of getting zero, but a $10 \%$ chance of getting $£ 700 \mathrm{~K}$ instead of an $11 \%$ chance of getting $£ 500 \mathrm{~K}$. What utility function are they using?
+
+Set the utilities to be $U\left(r_1\right)=0, U\left(r_2\right)=u$ and $U\left(r_3\right)=1$. In terms of the row vectors $\left(p_1, p_2, p_3\right)$ and $(0, u, 1)$, the expected utilities are $E(U)=\left(p_1, p_2, p_3\right)(0, u, 1)^T$, so
+$$
+\begin{array}{ll}
+E(U \mid A)=u & E(U \mid B)=0.1+0.89 u \\
+E(U \mid C)=0.11 u & E(U \mid D)=0.1
+\end{array}
+$$
+
+Preferring (A) to (B) means
+$$
+u>0.1+0.89 u \Rightarrow u>10 / 11 .
+$$
+
+On the other hand preferring (D) to (C) means
+$$
+0.1>0.11 u \Rightarrow u<10 / 11
+$$
+which is a contradiction. This paradox shows that human decision making does not always maximise an expected utility. This is unsurprising. The difficulty here is that the decision nevertheless seems reasonable.
+
+\subsection{Historical Context}
+Maurice Allais proposed this paradox to highlight the limitations of the then-dominant theories of risk and utility. It was a pivotal moment in economic thought, prompting a reevaluation of the foundational assumptions regarding rationality and decision-making under uncertainty.
+
+\subsection{Main Takeaways}
+\begin{itemize}
+    \item \textbf{Limitations of Expected Utility Theory}: The Allais Paradox demonstrates that the decision-making processes of real humans often deviate from what is predicted by classical utility models, indicating the need for theories that better accommodate actual human behavior.
+    \item \textbf{Rationality and Consistency}: It challenges the notion that human decisions are always rational and consistent, suggesting that other factors, such as the perception of risk and uncertainty, significantly influence choices.
+    \item \textbf{Development of Behavioral Economics}: The paradox contributed to the development of behavioral economics, which seeks to incorporate psychological insights into economic theory, offering a more nuanced understanding of decision-making under uncertainty.
+\end{itemize}
+
+The Allais Paradox remains a cornerstone in the study of economics and decision theory, reminding us that human behavior often defies simple mathematical modeling.
+\end{document}
