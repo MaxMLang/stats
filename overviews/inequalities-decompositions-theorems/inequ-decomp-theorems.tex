@@ -332,5 +332,32 @@ The intuition behind the Hammersley–Clifford Theorem is that the dependencies 
 \subsection{History}
 The theorem is named after John Hammersley and Peter Clifford, who formulated and proved it in the 1970s. It built upon earlier work in statistical physics and graph theory, bridging these fields by formalizing the relationship between graph structures and probability distributions. The theorem has since become a cornerstone in the study of graphical models, underpinning much of the modern theoretical and applied work in areas requiring the representation and analysis of complex probabilistic relationships.
 
+\section{De Finetti's Theorem}
 
+\subsection{Statement}
+De Finetti's Theorem is a fundamental result in the field of probability and statistics that applies to sequences of exchangeable random variables—a sequence where the joint probability distribution does not change when the order of the variables is altered. The theorem asserts that any such finite exchangeable sequence is conditionally independent given some latent variable. For infinite sequences, the theorem states that they can be represented as a mixture of i.i.d. sequences, implying that the original exchangeable sequence behaves as if it were a mixture of identical and independent processes, each with its own distribution drawn from a common "mixing" distribution.
+
+\subsubsection{De Finetti's Theorem (Infinite Case)}
+
+For an infinite sequence of exchangeable random variables \( (X_1, X_2, X_3, ...) \), there exists a probability measure \( \mu \) on the space of probability measures such that the joint probability distribution of the infinite sequence is a mixture of i.i.d. sequences, each with its own distribution. This means that the joint distribution \( P \) of \( (X_1, X_2, X_3, ...) \) can be represented as:
+
+\[ P(X_1 \in A_1, ..., X_n \in A_n) = \int_{\mathcal{P}} \prod_{i=1}^n P_i(A_i) \, d\mu(P_1, P_2, ...), \]
+
+for all \( n \) and all measurable sets \( A_1, ..., A_n \), where \( \mathcal{P} \) is the space of all probability measures and \( P_i \) is the marginal distribution of \( X_i \).
+
+\subsubsection{De Finetti's Theorem (Finite Case)}
+
+For a finite sequence of exchangeable random variables \( (X_1, X_2, ..., X_n) \), the joint distribution can be expressed in a similar manner as a mixture of i.i.d. sequences, but the representation is over the space of probability measures that could have generated the finite sequence.
+
+The theorem essentially states that exchangeable random variables are conditionally independent and identically distributed given some latent variable \( \theta \), often interpreted as a parameter of the underlying process. The measure \( \mu \) represents our uncertainty about \( \theta \), and once \( \theta \) is known, the random variables are i.i.d. with the distribution \( P_{\theta} \).
+
+
+\subsection{Importance and Use Cases}
+De Finetti's Theorem is crucial for understanding the behavior of exchangeable events and for modeling in Bayesian statistics, where exchangeability is often assumed. It provides a theoretical basis for the concept of subjective probability and has applications in areas such as actuarial science, statistical inference, and machine learning.
+
+\subsection{Intuition}
+The intuitive idea behind De Finetti's Theorem is that for exchangeable random variables, there's an underlying factor that, once known, renders the variables independent of one another. This can be likened to having a bag of colored balls where the color distribution is unknown. If we assume that drawing any ball does not affect the next (exchangeability), De Finetti tells us that there's some unknown distribution of colors, and each draw is like drawing from a bag with a specific color ratio.
+
+\subsection{History}
+The theorem is named after the Italian mathematician Bruno de Finetti, who introduced the concept in the early 20th century. De Finetti's work laid the groundwork for the modern Bayesian interpretation of probability, emphasizing the role of personal judgment and subjective assessment in statistical analysis. His theorem formalized the idea that probability is fundamentally a measure of belief rather than frequency, profoundly influencing statistical thought and practice.
 \end{document}
