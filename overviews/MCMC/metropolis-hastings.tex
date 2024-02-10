@@ -52,9 +52,14 @@ Here's how the game works:
 \end{enumerate}
 
 This game ensures that over time, you'll visit each room proportionally to its popularity, even though you're making your decisions with a biased die and a coin flip.
+
+\subsubsection{Intuition Notes }
+$$(X_t,Y_t) \rightarrow^{accept}  (X_t,Y_t) = (X_{t+1},Y_{t+1})$$
+$$(X_t,Y_t) \rightarrow^{reject}  (X_t,Y_t) $$
+$$\alpha(x,y) = \min\left(1, \frac{\tilde{\pi}(y,x)}{\tilde{\pi}(x,y)}\right), \text{where} \ \tilde{\pi}(y,x) \ \text{is the likelihood of the proposal and} \ \tilde{\pi}(x,y) \ \text{is the likelihood of the current state.}$$
 \newline
 \subsection{Mathematical Explanation}
-\newline
+
 Mathematically, the Metropolis-Hastings algorithm simulates a Markov chain with the aim of generating samples from a probability distribution \( p \) that might be difficult to sample from directly.
 
 Here's the step-by-step process:
@@ -68,6 +73,8 @@ Here's the step-by-step process:
 
 This process is repeated for a large number of iterations \( T \), and after some initial 'burn-in' period, the states \( X_t \) can be considered as samples from the desired distribution \( p \). The condition \( q(j \mid i) > 0 \Leftrightarrow q(i \mid j) > 0 \) ensures that every state can potentially be visited, and the chain is not trapped in any subset of the state space.
 \newline
+
+
 \subsection{Comparison Rejection Sampling and MH Algo}
 \newline
 Compared with an algorithm like adaptive rejection sampling that directly generates independent samples from a distribution, MetropolisHastings and other MCMC algorithms have a number of \textit{disadvantages}:
@@ -135,5 +142,44 @@ $$
     \caption{MCMC targeting a mixture of bivariate normals: (Left) MCMC trace of θ(t)  1 plotted  against t for t = 1, ..., 2000; (Right) scatter plot of sampled parameter vectors (θ(t)  1 , θ(t)  2 ), t =  1, ..., 2000. 
 }
 \end{figure}
+\section{How to choose a good proposal distribution?}
+\textbf{Goal}: design a Markov chain with small correlation $\rho\left(X^{(t-1)}, X^{(t)}\right)$ between subsequent values (why?).
 
+Two sources of correlation:
+\begin{itemize}
+    \item between the current state $X^{(t-1)}$ and proposed value $X \sim q\left(\cdot \mid X^{(t-1)}\right)$
+    \item correlation induced if $X^{(t)}=X^{(t-1)}$, if proposal is rejected.
+\end{itemize}
+
+Trade-off: there is a compromise between:
+\begin{itemize}
+    \item proposing large moves
+    \item obtaining a decent acceptance probability.
+\end{itemize}
+
+For multivariate distributions: covariance of proposal should reflect the covariance structure of the target.
+
+\subsection{Metropolis-adjusted Langevin Algorithm (MALA)}
+Langevin diffusion
+$$
+d X_t=\frac{1}{2} \nabla \log \pi\left(X_t\right) d t+d B_t
+$$
+has $\pi$ as a stationary distribution (if $\pi$ is suitably smooth).
+Unadjusted Langevin algorithm (ULA)
+Discretization of SGD
+$$
+X^{(t)}=X^{(t-1)}+\frac{\sigma}{2} \nabla \log \pi\left(X^{(t-1)}\right)+\sigma W
+$$
+where $W \sim \mathcal{N}\left(0, l_d\right)$. However, $\pi$ is not invariant distribution.
+- Metropolis-adjusted Langevin algorithm (MALA) (Roberts and Tweedie, 1996) uses ULA as the proposal:
+$$
+X^{\star}=X^{(t-1)}+\frac{\sigma}{2} \nabla \log \pi\left(X^{(t-1)}\right)+\sigma W
+$$
+so the Metropolis-Hastings acceptance ratio is
+$$
+\frac{\pi\left(X^{\star}\right)}{\pi\left(X^{(t-1)}\right)} \frac{\mathcal{N}\left(X^{(t-1)} ; X^{\star}+\frac{\sigma}{2} \cdot \nabla \log \pi\left(X^{\star}\right) ; \sigma^2\right)}{\mathcal{N}\left(X^{\star} ; X^{(t-1)}+\frac{\sigma}{2} \cdot \nabla \log \pi\left(X^{(t-1)}\right) ; \sigma^2\right)} .
+$$
+
+\section{Transformations}
+\section{Random Proposals}s
 \end{document}
