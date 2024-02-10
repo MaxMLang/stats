@@ -1,0 +1,67 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+\begin{document}
+
+\title{Overview of the Pinball Loss Function}
+\author{}
+\date{}
+\maketitle
+
+\section{Introduction}
+The Pinball Loss, also known as the Quantile Loss, is used in statistical models for quantile estimation. It is particularly suitable for this task because it asymmetrically penalizes overestimations and underestimations in a way that reflects the desired quantile.
+
+\section{Definition}
+For a given quantile \( \tau \) where \( 0 < \tau < 1 \), the pinball loss for an actual value \( y \) and predicted value \( f(x) \) is defined as:
+\[
+L_{\tau}(y, f(x)) = 
+\begin{cases} 
+\tau \cdot (y - f(x)), & \text{if } y \geq f(x),\\
+(1 - \tau) \cdot (f(x) - y), & \text{if } y < f(x).
+\end{cases}
+\]
+This function is minimized when the proportion \( \tau \) of the data falls below the predicted value \( f(x) \) as expected for the \( \tau \)-th quantile.
+
+\section{Properties}
+\subsection{Asymmetric Loss}
+The loss function provides an asymmetric penalty for errors, which is proportional to the quantile being estimated.
+
+\subsection{Alignment with Quantile Nature}
+The function mirrors the definition of a quantile in a probability distribution, where a fraction \( \tau \) of the data is expected to fall below the \( \tau \)-th quantile.
+Imagine we are trying to predict the 30th percentile (quantile \( \tau = 0.3 \)) of the weight of a certain breed of dogs. The 30th percentile means that we expect 30\% of the dogs' weights to be below the value we predict and 70\% to be above.
+\begin{itemize}
+    \item If the actual weight of a dog is \textbf{below} our prediction, it means our predicted 30th percentile is too high. Since we are estimating the 30th percentile, we are mostly concerned with how well we are capturing the lower weights. Therefore, we penalize this kind of error less severely because we are still capturing the lower 30\% effectively. Specifically, we multiply the error by \( \tau \), which is 0.3 in this case.
+    \item If the actual weight of a dog is \textbf{above} our prediction, it means our predicted 30th percentile is too low, and we are missing some of the lower weights that should be included in the 30\%. This is a more serious error because it's more important for our prediction to capture the lower 30\%. Thus, we penalize this kind of error more by multiplying the error by \( 1 - \tau \), which is 0.7.
+
+\end{itemize}
+
+\subsection{Encouragement of Accurate Estimates}
+The loss function encourages the model to predict a value such that the correct proportion of values fall above or below the estimated quantile.
+
+Imagine we are trying to predict the 30th percentile (quantile \( \tau = 0.3 \)) of the weight of a certain breed of dogs. The 30th percentile means that we expect 30\% of the dogs' weights to be below the value we predict and 70\% to be above.
+\begin{itemize}
+    \item The pinball loss function will guide the predictive model to adjust its parameters to minimize the weighted errors. If we are under-predicting (predicting weights too low), the model is penalized more heavily (by a factor of 0.7) because it’s crucial for a 30th percentile estimate to capture the correct bottom 30\%. The higher penalty for under-prediction pushes the model to increase its estimates.
+    \item Conversely, if we are over-predicting, the penalty is lighter (by a factor of 0.3), which is appropriate because being slightly above the 30th percentile is less concerning for our particular quantile estimate.
+Certainly! Let's clarify points 2 and 3 with an example.
+\end{itemize}
+
+
+
+\section{Illustrative Example}
+Let's say we predict that the 30th percentile weight is 10kg, but we observe the following two scenarios for actual weights:
+
+\begin{itemize}
+    \item Scenario 1: A dog's weight is 9kg (below our prediction).
+    \item Scenario 2: A dog's weight is 11kg (above our prediction).
+\end{itemize}
+
+For Scenario 1 (under-prediction), the error is \( 10kg - 9kg = 1kg \). The pinball loss is \( \tau \times \text{error} = 0.3 \times 1kg = 0.3kg \).
+
+For Scenario 2 (over-prediction), the error is \( 11kg - 10kg = 1kg \). The pinball loss is \( (1 - \tau) \times \text{error} = 0.7 \times 1kg = 0.7kg \).
+\newline
+Notice that the loss is greater when we over-predict because for the 30th percentile, underestimating the weight is worse—we risk missing out on the lower 30\% of data, which is what we're trying to capture. The pinball loss incentivizes our model to be more cautious about underestimating than overestimating for this particular quantile.
+
+
+
+\end{document}
