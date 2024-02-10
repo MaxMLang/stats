@@ -1,0 +1,70 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{biblatex}
+\addbibresource{references.bib}
+\title{Langevin Diffusion and Associated Algorithms}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+Langevin diffusion is a continuous-time stochastic process that has a probability distribution \(\pi\) as its stationary distribution under certain smoothness conditions.
+
+\section{Langevin Diffusion}
+The differential equation governing Langevin diffusion is given by:
+\[
+dX_t = \frac{1}{2} \nabla \log(\pi(X_t))dt + dB_t,
+\]
+where \(dB_t\) denotes Brownian motion. In the context of MCMC, this process motivates algorithms that make use of gradient information to propose new states.
+
+\section{Unadjusted Langevin Algorithm (ULA)}
+The ULA discretizes Langevin diffusion without correcting for the discretization error. It updates the state according to:
+\[
+X^{(t)} = X^{(t-1)} + \frac{\sigma}{2} \nabla \log(\pi(X^{(t-1)})) + \sigma W,
+\]
+where \(W \sim \mathcal{N}(0, I_d)\). However, \(\pi\) is not invariant under ULA, necessitating adjustments for convergence to the correct distribution.
+\subsection{Intuitive Explanation}
+Imagine you are at the top of a hill and want to find your way down to the valley, which represents the area of highest probability in your distribution. In ULA, you would use the slope of the hill at your current location to determine the direction to travel. The steeper the slope, the more it influences the direction of your next step.
+
+Mathematically, this slope is represented by the gradient of the log of the target distribution, \(\nabla \log(\pi(X^{(t-1)}))\). The term \(\sigma W\) is a random perturbation that prevents you from getting stuck in one place; it's like occasionally taking a random step in any direction to explore new areas.
+
+The "unadjusted" part of ULA's name comes from the fact that it doesn't correct for the errors that occur due to this discretization. In other words, taking steps based solely on the local slope and random perturbations does not guarantee that you will end up in the valley. Over time, these small errors can add up, leading you to a different place than the true valley.
+
+This is why ULA is not exact — the distribution of the points it generates does not perfectly match the target distribution. However, ULA serves as the basis for other algorithms that do correct for these errors, such as the Metropolis-Adjusted Langevin Algorithm (MALA), which combines the gradient-based proposal of ULA with a Metropolis-Hastings acceptance step to ensure convergence to the correct distribution.
+
+\section{Metropolis-Adjusted Langevin Algorithm (MALA)}
+MALA adds a Metropolis-Hastings step to correct the invariant distribution of ULA. It proposes a new state \(X^\ast\) using ULA:
+\[
+X^\ast = X^{(t-1)} + \frac{\sigma}{2} \nabla \log(\pi(X^{(t-1)})) + \sigma W,
+\]
+and accepts it with the probability given by the Metropolis-Hastings acceptance ratio:
+\[
+\frac{\pi(X^\ast) \mathcal{N}(X^{(t-1)}; X^\ast + \frac{\sigma}{2} \nabla \log(\pi(X^\ast)); \sigma^2)}{\pi(X^{(t-1)}) \mathcal{N}(X^\ast; X^{(t-1)} + \frac{\sigma}{2} \nabla \log(\pi(X^{(t-1)})); \sigma^2)}.
+\]
+
+\subsection{Intuitive Explanation}
+Think of MALA as a sophisticated GPS system for hiking. Like ULA, you use the gradient of the log of the target distribution as a guide, suggesting which direction to take your next step down the hill. However, unlike ULA, after taking a step, MALA checks the proposed new location to make sure it's actually closer to the true destination (the valley of the target distribution). 
+
+This check is like asking, "Is this new location a better representation of where I want to be according to my map (the target distribution)?" This is done using the Metropolis-Hastings acceptance ratio, which is a way of comparing the new location's probability to the old one. If the new location is a more probable area according to the map, you'll likely accept the move. If it's less probable, you might still move there, but only with a certain probability. This probability is calculated in such a way that over time, you are more likely to end up in the regions of higher probability.
+
+By repeatedly applying this check after each proposed move, MALA corrects for the sampling errors inherent in ULA, ensuring that the samples you end up with accurately represent the true landscape of the distribution you're trying to explore. This results in a sampling method that not only uses the information about the distribution's shape to propose intelligent moves but also rigorously checks each move to ensure it's statistically sound.
+
+\section{Advantages, Disadvantages and Applications}
+\subsection{Advantages}
+\begin{itemize}
+    \item Incorporates gradient information, which can lead to more efficient exploration of the state space.
+    \item MALA corrects the bias introduced by ULA, converging to the correct target distribution.
+\end{itemize}
+
+\subsection{Disadvantages}
+\begin{itemize}
+    \item Requires computation of the gradient of \(\log(\pi)\), which can be computationally expensive.
+    \item ULA may fail to converge to the target distribution without the Metropolis-Hastings adjustment.
+\end{itemize}
+
+\subsection{Applications}
+These algorithms are particularly useful when the target distribution is differentiable and the gradient can be computed efficiently. They are widely used in Bayesian statistical modeling, machine learning, and other areas where sampling from complex, high-dimensional distributions is required.
+\end{document}
