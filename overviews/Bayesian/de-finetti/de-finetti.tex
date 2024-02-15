@@ -35,9 +35,19 @@ Here, \( p(X_1 = x_1, \ldots, X_n = x_n \mid \theta) \) represents the likelihoo
 \paragraph{Mathematical Justification}
 De Finetti's theorem states that any sequence of exchangeable random variables can be represented as a mixture of i.i.d. sequences, parameterized by \( \theta \). Mathematically, the joint distribution of the sequence is given by:
 
-\[
-p(x_1, \ldots, x_n) = \int p(x_1, \ldots, x_n | \theta) dF(\theta)
-\]
+Suppose we have seen $x_1, \ldots, x_m$ and we wish to predict $x_{m+1}, \ldots, x_n$. The predictive distribution is
+$$
+\begin{aligned}
+p\left(x_{m+1: n} \mid x_{1: m}\right) & =p\left(x_{1: n}\right) / p\left(x_{1: m}\right) \\
+& =\int p\left(x_{m+1: n} \mid \theta\right) \frac{p\left(x_{1: m} \mid \theta\right) d F(\theta)}{p\left(x_{1: m}\right)} .
+\end{aligned}
+$$
+
+We see that
+$$
+d F\left(\theta \mid x_1, \ldots, x_m\right) \propto p\left(x_1, \ldots, x_n \mid \theta\right) d F(\theta)
+$$
+is our updated prior, in other words this is the posterior for $\theta$ given data $x_1, \ldots, x_m$. de Finetti tells us that Bayesian inference is possible.
 
 The mixture over \( \theta \) reflects our uncertainty about which i.i.d. model is generating the data. This is equivalent to specifying a prior over \( \theta \), where \( F(\theta) \) represents the prior belief about the distribution of \( \theta \). In essence, De Finetti's theorem provides the basis for representing our uncertainty as a prior distribution in Bayesian inference.
 
