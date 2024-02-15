@@ -1,0 +1,65 @@
+\documentclass{article}
+\usepackage{amsmath}
+
+\begin{document}
+
+\section*{Marginal Consistency}
+
+Marginal consistency is a property of a family of probability distributions. A family of distributions is said to be marginally consistent if for any joint distribution of a subset of random variables within the family, the marginal distributions of a smaller subset are the same, regardless of whether we consider them as part of the larger set or on their own.
+
+Intuitively, if you consider a family of probability distributions that are marginally consistent, it means that as you add more variables to your set, the probability distribution for the subset you had before doesn't change. The "margins" or edges of your probability distribution stay the same even as you add more dimensions to it.
+
+
+Imagine you have a series of students, and \( X_i \) is an indicator variable that's 1 if student \( i \) was born on the 13th of June (De Finetti's Birthday) and 0 otherwise. The joint distribution \( p_{1:n} \) involves the first \( n \) students. When you add another student to the mix, making it \( n+1 \) students, you get a new joint distribution \( p_{1:n+1} \). Marginal consistency would mean that the probability distribution for the first \( n \) students shouldn't change just because you've added another student.
+
+Mathematically, this is expressed as:
+
+\[ p_{1:n}(x_1, \ldots, x_n) = p_{1:n+1}(x_1, \ldots, x_n, 0) + p_{1:n+1}(x_1, \ldots, x_n, 1) \]
+
+What this says is that the probability of any particular outcome for the first \( n \) students can be found by summing the probabilities of the outcomes for \( n+1 \) students where the \( (n+1) \)-st student's outcome is either 0 or 1. The margins, or the probabilities for the first \( n \) students, are consistent even as you add the \( (n+1) \)-st student.
+
+Mathematically, this is expressed as:
+\begin{equation}
+p_{1:n}(x_1, \ldots, x_n) = \sum_{x_{n+1}} p_{1:n+1}(x_1, \ldots, x_n, x_{n+1})
+\end{equation}
+
+In contrast, if the random variables change with \( n \), then adding a new student might change the probability distribution for the previous \( n \) students. This would mean the distributions are not marginally consistent. For example, if the likelihood of a student asking a question changes when a new student is added, the behavior of the original group is no longer consistent when viewed marginally. The probability distribution for the original group would need to be adjusted, which violates the property of marginal consistency.
+
+\section{Exchangeability}
+A sequence of random variables \( X_1, X_2, \ldots, X_n \) is said to be exchangeable if the joint probability distribution is invariant to permutations of the indices. In other words, the order in which the variables are observed does not affect the probability of observing a particular sequence of outcomes. Formally:
+
+\[ P(X_1 = x_1, X_2 = x_2, \ldots, X_n = x_n) = P(X_{\pi(1)} = x_1, X_{\pi(2)} = x_2, \ldots, X_{\pi(n)} = x_n) \]
+
+\subsection{Exchangeability and Independence}
+\subsubsection{Example Independence}
+Consider a fair coin. Each time you flip it, the outcome (heads or tails) does not depend on the previous flips. This is a classic example of independent events. If you flip the coin twice, getting heads on the first flip does not affect the probability of getting heads on the second flip. The flips are independent because the outcome of one flip does not influence the outcome of another and the flips are also exchangeable because  the order does not matter as well.
+
+\subsubsection{Example Exchangeability}
+Now imagine you have a bag of five balls: three red and two blue. You draw two balls without replacement and line them up. The order of the balls in this sequence does not matter because the balls are identical except for their color. Whether you draw a red ball first and then a blue ball, or a blue ball first and then a red ball, the probability of ending up with one ball of each color is the same. The sequence of draws is exchangeable because the probability distribution over the sequence is invariant to the order of the balls.
+
+Exchangeability implies that for any permutation of the sequence, the joint probability remains the same. It doesn't mean that the draws are independent, though. Once you've drawn a red ball, the chances of drawing another red ball decrease because there are fewer red balls in the bag.
+
+In contrast to independence, exchangeability can allow for dependencies between events. In the bag example, after one ball is drawn, the composition of the bag changes, which affects the probabilities of future draws. However, because the balls are drawn without any particular order, the sequence is still considered exchangeable.
+
+
+\subsection{Relationship between Marginal Consistency and Exchangeability}
+
+Exchangeable random variables have a special form of marginal consistency. If you have an exchangeable sequence of random variables and you consider any finite subset of these, \textbf{not only does the joint distribution of this subset not depend on the order of the variables, but also the marginal distribution of any further subset is consistent with the larger set}. This is because the joint distribution is symmetric with respect to the indices of the variables, and thus adding more variables doesn't change the distribution of the previous ones when viewed marginally.
+
+\section{De Finetti and Exchangeability}
+In simple terms, De Finetti’s Theorem states that if an infinite sequence of random variables is exchangeable, then there exists an underlying probability distribution such that the sequence can be considered to be independently and identically distributed (i.i.d.) conditional on that underlying distribution. \textbf{Essentially, the theorem tells us that exchangeable observations are conditionally independent given some latent (or hidden) variables.}
+
+\subsection{Why is Exchangeability Important for the Theorem?}
+The importance of exchangeability in De Finetti's theorem can be explained in two main points:
+
+\begin{itemize}
+    \item In many real-world scenarios, especially in the social sciences and decision-making processes, it's unreasonable to assume that events are truly independent. However, assuming that they are exchangeable is often much more realistic. Exchangeability allows us to model complex dependencies in a tractable way. For example, people's opinions in a group discussion are not independent (because they influence each other) but can often be modeled as exchangeable.
+    \textbf{\item Bayesian Inference:} De Finetti’s Theorem provides a justification for using Bayesian methods in the analysis of exchangeable data. According to the theorem, we can always imagine exchangeable data as being generated from a \textbf{mixture over some parameter space}. This mixture represents our uncertainty about the true parameter that defines the distribution of the data. By treating this parameter as a random variable and applying Bayesian methods, we can update our beliefs about this parameter as more data becomes available.
+
+\end{itemize}
+
+
+
+
+
+\end{document}

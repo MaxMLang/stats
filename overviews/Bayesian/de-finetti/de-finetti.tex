@@ -1,0 +1,106 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+
+\begin{document}
+
+\section{Bayesian Inference and De Finetti's Theorem}
+
+De Finetti's Theorem had/has substantial implications for the philosophy and practice of Bayesian inference. Mathematically, De Finetti's theorem can be articulated in the context of an infinite sequence of exchangeable random variables \(X_1, X_2, \ldots\ ,  X_n.
+
+\subsection{Defintion}
+The theorem states that for any infinite exchangeable sequence of random variables, there exists some latent random variable \( \theta \) (which we can interpret as a parameter) such that the \( X_i \)'s are conditionally independent given \( \theta \). In other words, knowing \( \theta \), the \( X_i \)'s are independent and identically distributed (i.i.d.).
+
+Let $X_1, X_2, \ldots X_n, \ldots$ be an infinite sequence of binary random variables. The sequence is exchangeable if and only if there exists a distribution function $F(\theta)$ on $[0,1]$ such that
+$$
+p\left(x_1, \ldots, x_n\right)=\int_0^1\left[\prod_{i=1}^n p\left(x_i \mid \theta\right)\right] d F(\theta)
+$$
+with
+$$
+F(\theta)=\operatorname{Pr}(\Theta \leq \theta) \quad \text { where } \quad \Theta=\lim _{N \rightarrow \infty} N^{-1} \sum_{i=1}^N X_i .
+$$
+and $p\left(x_i \mid \theta\right)=\theta^{x_i}(1-\theta)^{1-x_i}$. It further holds that the conditioned distribution is Bernoulli,
+$$
+p\left(x_1, \ldots, x_n \mid \Theta=\theta\right)=\prod_{i=1}^n p\left(x_i \mid \theta\right) .
+$$
+
+
+Here, \( p(X_1 = x_1, \ldots, X_n = x_n \mid \theta) \) represents the likelihood, which is the probability of observing the data given the parameter \( \theta \), and \( F(\theta) \) represents the prior distribution over the parameter space $\Theta$.
+
+\section{Influence on Bayesian Inference}
+
+\subsubsection{Justification for Priors:}
+    De Finetti's theorem justifies the use of prior distributions in Bayesian analysis. It implies that we can model our uncertainty about the unknown parameter \( \theta \) with a probability distribution, which is the Bayesian prior. This prior represents our beliefs about \( \theta \) before we observe any data.
+    
+\paragraph{Mathematical Justification}
+De Finetti's theorem states that any sequence of exchangeable random variables can be represented as a mixture of i.i.d. sequences, parameterized by \( \theta \). Mathematically, the joint distribution of the sequence is given by:
+
+\[
+p(x_1, \ldots, x_n) = \int p(x_1, \ldots, x_n | \theta) dF(\theta)
+\]
+
+The mixture over \( \theta \) reflects our uncertainty about which i.i.d. model is generating the data. This is equivalent to specifying a prior over \( \theta \), where \( F(\theta) \) represents the prior belief about the distribution of \( \theta \). In essence, De Finetti's theorem provides the basis for representing our uncertainty as a prior distribution in Bayesian inference.
+
+\paragraph{Intuition}
+Intuitively, if we consider a series of coin flips, we might not know the true probability of heads, but we believe it could be any value between 0 and 1. Our uncertainty about this true probability is represented as a prior distribution. Each possible value of the probability of heads (each \( \theta \)) could generate a different sequence of flips. De Finetti's theorem tells us that by considering all these possible sequences (weighted by our prior), we account for our uncertainty in a mathematically coherent way.
+
+
+
+
+
+
+\subsection{Likelihood Principle:}
+    Once \( \theta \) is given, the data are i.i.d., and the principle of likelihood takes over. This means that the probability of observing the data only depends on \( \theta \) through the likelihood function. This aligns perfectly with Bayesian inference, where we update our prior beliefs about \( \theta \) in light of the observed data using the likelihood.
+\paragraph{Mathematical Justification}
+Given \( \theta \), the likelihood of observing a particular sequence \( (x_1, \ldots, x_n) \) under the assumption of exchangeability can be decomposed into the product of individual likelihoods, thanks to the conditional independence implied by De Finetti's Theorem:
+
+\[
+p(x_1, \ldots, x_n | \theta) = \prod_{i=1}^{n} p(x_i | \theta).
+\]
+
+This is the mathematical expression of the likelihood principle, asserting that the data, once conditioned on \( \theta \), inform us about the parameter independently of each other. It validates the use of the product of probabilities as a measure of how likely the data are, given the parameter \( \theta \).
+
+\paragraph{Intuition}
+The intuition behind the likelihood principle is analogous to diagnosing a medical condition based on symptoms. If a doctor knows the underlying condition (akin to \( \theta \)), they can predict the occurrence of symptoms (data points) independently. Similarly, in a probabilistic model, once \( \theta \) is known, we can evaluate the likelihood of the data independently, as if each data point were a symptom telling us about the underlying condition of the system (the parameter \( \theta \)). This approach is fundamental in Bayesian inference, as it enables updating our beliefs about the parameter based on how well it explains the observed data.
+
+
+
+\subsection{Bayesian Updating:}
+Bayesian inference proceeds by updating the prior distribution of \( \theta \) to a posterior distribution using Bayes' theorem, which combines the prior and the likelihood:
+
+\[
+P(\theta \mid X_1 = x_1, \ldots, X_n = x_n) = \frac{P(X_1 = x_1, \ldots, X_n = x_n \mid \theta) P(\theta)}{P(X_1 = x_1, \ldots, X_n = x_n)}
+\]
+
+\paragraph{Mathematical Justification}
+Bayes' theorem is derived from the definition of conditional probability. The denominator, \( P(X_1 = x_1, \ldots, X_n = x_n) \), is the marginal likelihood or evidence, which normalizes the probability and is computed as the integral of the likelihood over all possible values of \( \theta \):
+
+\[
+P(X_1 = x_1, \ldots, X_n = x_n) = \int_{\Theta} P(X_1 = x_1, \ldots, X_n = x_n \mid \theta) P(\theta) d\theta.
+\]
+
+This ensures that the posterior distribution is a proper probability distribution that sums to 1. The numerator, \( P(X_1 = x_1, \ldots, X_n = x_n \mid \theta) P(\theta) \), is the joint probability of the data and the parameter, which is proportional to the posterior. This reflects the updating of our beliefs about \( \theta \) after observing the data.
+
+\paragraph{Intuition}
+Intuitively, Bayesian updating is like adjusting your estimate after receiving new evidence. Imagine you're trying to guess the weight of a cake by feeling its heaviness. Your initial guess is your prior. After putting the cake on a scale and seeing the reading (data), you refine your estimate — that's the update. The scale reading is analogous to the likelihood, the process of refining your estimate represents Bayesian updating, and your final estimate is the posterior distribution, which is now more informed than your initial guess. 
+
+\subsection{Mixture Interpretation:}
+    The idea that exchangeable data are generated from a mixture over some parameter space is essentially saying that the variability in the data can be thought of as arising from two sources: the variability due to the parameter \( \theta \) (captured by the prior) and the variability in the data conditional on \( \theta \) (captured by the likelihood).
+\paragraph{Mathematical Justification}
+The mixture interpretation of exchangeable sequences comes directly from the integral representation in De Finetti's theorem:
+
+\[
+p(x_1, \ldots, x_n) = \int_{\Theta} p(x_1, \ldots, x_n | \theta) dF(\theta),
+\]
+
+where \( F(\theta) \) is the distribution function of \( \theta \). This equation expresses the joint probability as an integral over all possible values of \( \theta \), weighted by the likelihood \( p(x_1, \ldots, x_n | \theta) \) and the prior belief about \( \theta \), \( F(\theta) \). It encapsulates the idea that our observed data is generated from a mixture of potential 'true' models, each with a different \( \theta \), and our uncertainty about which \( \theta \) is correct is captured by the prior distribution.
+
+\paragraph{Intuition}
+The mixture interpretation can be understood by thinking about a bowl of differently colored balls where each color corresponds to a different \( \theta \), and the proportion of each color matches the prior distribution \( F(\theta) \). Drawing a ball from the bowl is akin to selecting a \( \theta \), and then generating data based on that \( \theta \) is like observing the color of the ball. Just as we can have a mix of colors in the bowl, we can have a mix of potential generating processes (parameters \( \theta \)) for our data. The data we observe is thus seen as arising from one of these many potential generating processes, reflecting the variability in the data due to the uncertainty in \( \theta \).
+
+
+
+De Finetti’s theorem mathematically underpins the Bayesian approach of modeling uncertainty using probability distributions and provides a strong rationale for the Bayesian practice of using priors and updating them with observed data via the likelihood function. It tells us that assuming a prior is not just a subjective choice but a mathematically sound representation of a certain type of symmetry (exchangeability) in the data.
+
+
+\end{document}
