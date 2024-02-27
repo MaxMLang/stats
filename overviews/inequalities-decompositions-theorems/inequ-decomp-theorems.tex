@@ -360,4 +360,21 @@ The intuitive idea behind De Finetti's Theorem is that for exchangeable random v
 
 \subsection{History}
 The theorem is named after the Italian mathematician Bruno de Finetti, who introduced the concept in the early 20th century. De Finetti's work laid the groundwork for the modern Bayesian interpretation of probability, emphasizing the role of personal judgment and subjective assessment in statistical analysis. His theorem formalized the idea that probability is fundamentally a measure of belief rather than frequency, profoundly influencing statistical thought and practice.
+
+\section{Law of Total Variance}
+
+\subsection{Statement}
+The Law of Total Variance, also known as the Law of Total Variation or Eve's Law, establishes that for a regression model involving a response variable \( y \in \mathbb{R} \) and a covariate vector \( x \in \mathbb{R}^p \), the marginal variance of \( y \) can be decomposed into the sum of the expected conditional variance of \( y \) given \( x \) and the variance of the conditional expectation of \( y \) given \( x \):
+\[ \text{Var}(y) = \text{E}_x[\text{Var}(y|x)] + \text{Var}_x[\text{E}(y|x)] \]
+
+For homoscedastic cases where variance is constant, the conditional variance is \( \sigma^2 \), leading to a simplified variance equation. In heteroscedastic cases, the variance is a function of \( x \), and the decomposition reflects this variability.
+
+\subsection{Importance and Use Cases}
+This law is crucial for understanding the behavior of variance in complex models, particularly in regression analysis. It allows statisticians and data scientists to separate the variability explained by the model from the unexplained variability, aiding in model assessment and improvement.
+
+\subsection{Intuition}
+The Law of Total Variance tells us that the overall uncertainty in \( y \) (the total variance) comes from two sources: the average uncertainty after we know \( x \) (the expected conditional variance) and the uncertainty in our prediction of \( y \) from \( x \) (the variance of the expected value). If you know the covariates, you reduce some uncertainty about \( y \), but not all of it—there's still the inherent variability in the relationship between \( x \) and \( y \).
+
+\subsection{History}
+While the Law of Total Variance is a classical result deriving from the foundations of probability theory, it doesn't have a specific attribution to a single mathematician. Instead, it is part of the broader development of statistical theory related to expectation and variance, which involves the cumulative work of many contributors over the years.
 \end{document}

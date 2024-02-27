@@ -1,0 +1,414 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage[version=4]{mhchem}
+\usepackage{stmaryrd}
+\title{Inference with HMM}
+\author{Max Lang}
+\date{February 2024}
+
+
+\begin{document}
+
+\maketitle
+\section{Filtering}
+Filtering in the context of Hidden Markov Models (HMM) is an inference method used to estimate the current state of a system based on all available information up to the current point in time. This is done without considering future observations. The methodology is particularly useful in real-time applications where the state needs to be estimated on the go, as data arrives. Now, let's discuss the four sections you're interested in, focusing on the frog example.
+
+\subsection*{1) Main Goal of Filtering and Its Applications}
+The main goal of filtering is to compute the posterior distribution of the state at a specific time, given all the observations up to that time. This allows for an understanding of the current state of the system based on the evidence observed so far. Filtering is useful in situations where we want to make immediate decisions without waiting to observe the entire sequence of events, which is common in real-time systems.
+
+Applications of filtering are widespread, including:
+
+\begin{itemize}
+  \item \textbf{Navigation systems:} Estimating the current location of a vehicle based on movement data and sensor readings.
+  \item \textbf{Finance:} Predicting the current state of a financial market for high-frequency trading.
+  \item \textbf{Signal processing:} Cleaning noisy signals in real time to extract the underlying signal of interest.
+  \item \textbf{Ecology:} Tracking animal movement and behavior based on partial and noisy observations.
+\end{itemize}
+
+\subsection*{2) Mathematical Definition of Filtering}
+In mathematical terms, filtering aims to calculate the conditional probability \( p(x_t | y_{1:t}) \), which is the probability of being in state \( x_t \) at time \( t \), given the sequence of observations \( y_{1:t} \) up to time \( t \).
+
+\subsection*{3) Definition Forward-Algorithm}
+The filtering algorithm, in the context of HMM, is typically referred to as the Forward Algorithm, which involves two main equations:
+
+\begin{itemize}
+  \item \textbf{Forward message update:} This calculates the "forward message" \( \alpha_t(j) \), which is the joint probability of the observation sequence up to time \( t \) and being in state \( j \) at time \( t \).
+\[ \alpha_t(j) = g_j(y_t) \sum_{i=1}^{K} A_{i,j} \cdot \alpha_{t-1}(i) \]
+
+  \item \textbf{Normalization:} After computing \( \alpha_t(j) \), it is normalized to get the filtering distribution:
+\[ p(x_t | y_{1:t}) = \frac{\alpha_t(x_t)}{\sum_{x \in X} \alpha_t(x)} \]
+
+\end{itemize}
+
+\subsection*{4) Step-by-Step Algorithm with the Frog Example}
+Let's go through the Forward Algorithm using the frog example:
+
+\begin{itemize}
+  \item \textbf{Initialization:} We start by setting the initial probabilities \( \alpha_0(i) = \mu_i \), which is \( 1/6 \) for each state since the initial distribution is uniform.
+
+  \item \textbf{Recursion (Time update):} For each time step \( t \) and for each state \( j \), compute the forward message. This involves summing the product of the forward message from the previous time step and the transition probability for each possible previous state \( i \), multiplied by the emission probability of the current observation \( g_j(y_t) \).
+
+  \begin{itemize}
+    \item For the frog example, suppose at time \( t=1 \), we observe \( y_1 = 2 \) (non-detection). Then for each state \( j \), we calculate:
+\[ \alpha_1(j) = g_j(y_1) \sum_{i=1}^{6} A_{i,j} \cdot \alpha_{0}(i) \]
+
+  \end{itemize}The values of \( A_{i,j} \) and \( g_j(y_t) \) come from the transition and emission matrices given in your slides.
+
+  \item \textbf{Normalization (Measurement update):} After computing \( \alpha_t(j) \) for all states, normalize these probabilities to sum to 1. This gives us the probability distribution of the frog's position at time \( t \), given the observations up to \( t \).
+
+  \item \textbf{Iterate:} Repeat the recursion and normalization steps for each time step \( t \).
+
+\end{itemize}
+
+\textbf{Transition Matrix \( A_{ij} \)}:
+
+For the transition matrix, \( A \), we need to fill out the probabilities of transitioning from each state \( i \) to every other state \( j \). Since the frog can either stay in the same place or move to an adjacent level (up or down one level), the matrix is tridiagonal.
+
+Let's assume that \( p = 0.4 \) as given previously, so the transition probabilities of moving up or down are \( \frac{1-p}{2} = \frac{1-0.4}{2} = 0.3 \). The matrix \( A \) would look like this:
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|c|}
+\hline
+ & 1 & 2 & 3 & 4 & 5 & 6\\
+\hline
+1 & 0.4 & 0.6 & 0 & 0 & 0 & 0 \\
+\hline
+2 & 0.3 & 0.4 & 0.3 & 0 & 0 & 0 \\
+\hline
+3 & 0 & 0.3 & 0.4 & 0.3 & 0 & 0 \\
+\hline
+4 & 0 & 0 & 0.3 & 0.4 & 0.3 & 0 \\
+\hline
+5 & 0 & 0 & 0 & 0.3 & 0.4 & 0.3 \\
+\hline
+6 & 0.3 & 0 & 0 & 0 & 0.6 & 0.4 \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+Each row of the transition matrix \( A \) must sum to one. The reason for this is that each row of the transition matrix represents the probabilities of transitioning from a particular state to all possible states, including the possibility of remaining in the same state.
+
+\textbf{Emission Probability \( B_j(y) \)}:
+
+For the emission probability matrix \( B \), we have the probabilities of detecting the frog (signal 1) or not (signal 2), depending on the frog's actual level. Given your previous information, let's assume detection probabilities are:
+
+\begin{itemize}
+  \item \( B_1(1) = 0.9 \) and \( B_1(2) = 0.1 \) for level 1,
+  \item \( B_2(1) = 0.5 \) and \( B_2(2) = 0.5 \) for level 2,
+  \item \( B_3(1) = 0 \) and \( B_3(2) = 1 \) for level 3 (the frog cannot be detected at level 3),
+  \item and we can assume the detection probabilities decrease further as the frog moves up.
+\end{itemize}
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+Level (j) & Signal 1 (y=1) & Signal 2 (y=2)\\
+\hline
+1 & 0.9 & 0.1 \\
+\hline
+2 & 0.5 & 0.5 \\
+\hline
+3 & 0.0 & 1.0 \\
+\hline
+4 & 1 & 0 \\
+\hline
+5 & 1 & 0 \\
+\hline
+6 & 1 & 0 \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+\textbf{Initial State Distribution \( \mu \)}:
+
+The initial state distribution \( \mu \), assuming the frog can start on any of the 6 levels with equal probability, would be:
+
+\begin{table}[h]
+\begin{center}
+\begin{tabular}{|c|c|c|c|c|c|}
+\hline
+Level (i) & Probability \( \mu_i \)\\
+\hline
+1 & 1/6 \\
+\hline
+2 & 1/6 \\
+\hline
+3 & 1/6 \\
+\hline
+4 & 1/6 \\
+\hline
+5 & 1/6 \\
+\hline
+6 & 1/6 \\
+\hline
+\end{tabular}
+\end{center}
+\end{table}
+
+Let's take the frog example and suppose the ladder has 6 levels. Here's how realizations of these items might look at a specific time step:
+
+\begin{itemize}
+  \item \textbf{Emission Probability \( B_j(y) \)}:
+
+  \begin{itemize}
+    \item For instance, if the frog detector observes the frog (let's say \( y = 1 \)), and we are considering the probability of the frog being at level 1 (state 1), the emission probability might be \( B_1(1) = 0.9 \) since there's a high chance of detecting the frog if it is actually at the bottom.
+  \end{itemize}
+  \item \textbf{Transition Probability \( A_{ij} \)}:
+
+  \begin{itemize}
+    \item The transition probability from level 2 to level 1 might be \( A_{21} = 0.3 \) (since there's a chance the frog could hop down).
+  \end{itemize}
+  \item \textbf{Forward Probability \( \alpha_t(j) \)}:
+The forward probability for state \( j \) at time \( t \), \( \alpha_t(j) \), is computed as follows:
+
+\end{itemize}
+
+\[ \alpha_t(j) = \left( \sum_{i=1}^{K} \alpha_{t-1}(i) A_{i,j} \right) B_j(y_t) \]
+
+where:
+
+\begin{itemize}
+  \item \( \alpha_{t-1}(i) \) is the forward probability from the previous time step \( t-1 \) for state \( i \).
+  \item \( A_{i,j} \) is the transition probability from state \( i \) to state \( j \) (from the transition matrix \( A \)).
+  \item \( B_j(y_t) \) is the emission probability of observing \( y_t \) given the current state \( j \) (from the emission matrix \( B \)).
+\end{itemize}
+
+This is a set of probabilities, one for each level. If we are at time \( t = 2 \), for instance, \( \alpha_2(j) \) might look like this:
+Certainly! To calculate the forward probabilities for the initial and next state for the frog example, we'll follow the steps of the Forward Algorithm. Let's denote the forward probability at time \( t \) and state \( j \) as \( \alpha_t(j) \).
+
+\subsubsection*{Step 1: Initialization for \( \alpha_0 \)}
+At time \( t = 0 \), we initialize the forward probabilities based on the initial state distribution \( \mu \). Since it's given that the frog can start on any of the 6 levels with equal probability, each initial state has a probability of \( \frac{1}{6} \).
+
+\[ \alpha_0(j) = \mu_j = \frac{1}{6} \text{ for all } j = 1, \ldots, 6 \]
+
+\subsubsection*{Step 2: Calculation for \( \alpha_1 \)}
+To calculate \( \alpha_1(j) \), which is the probability of being in state \( j \) at time \( t = 1 \) given the first observation \( y_1 \), we use the formula:
+
+\[ \alpha_1(j) = \left( \sum_{i=1}^{6} \alpha_0(i) \cdot A_{i,j} \right) \cdot B_j(y_1) \]
+
+Let's assume our first observation is \( y_1 = 1 \) (detection). We now calculate \( \alpha_1(j) \) for each state \( j \):
+
+For \( j = 1 \):
+
+\[ \alpha_1(1) = \left( \alpha_0(1) \cdot A_{1,1} + \alpha_0(2) \cdot A_{2,1} \right) \cdot B_1(y_1) \]
+
+\[ \alpha_1(1) = \left( \frac{1}{6} \cdot 0.4 + \frac{1}{6} \cdot 0.3 \right) \cdot 0.9 \]
+
+\[ \alpha_1(1) = \left( 0.0667 + 0.05 \right) \cdot 0.9 \]
+
+\[ \alpha_1(1) = 0.1167 \cdot 0.9 \]
+
+\[ \alpha_1(1) = 0.105 \]
+
+For \( j = 2 \):
+
+\[ \alpha_1(2) = \left( \alpha_0(1) \cdot A_{1,2} + \alpha_0(2) \cdot A_{2,2} + \alpha_0(3) \cdot A_{3,2} \right) \cdot B_2(y_1) \]
+
+\[ \alpha_1(2) = \left( \frac{1}{6} \cdot 0.6 + \frac{1}{6} \cdot 0.4 + 0 \right) \cdot 0.5 \]
+
+\[ \alpha_1(2) = \left( 0.1 + 0.0667 \right) \cdot 0.5 \]
+
+\[ \alpha_1(2) = 0.1667 \cdot 0.5 \]
+
+\[ \alpha_1(2) = 0.08335 \]
+
+And so on for \( j = 3 \) to \( j = 6 \), using the same approach. Remember that for \( j > 2 \), the probability of detection \( B_j(y_1) \) changes according to the emission probabilities you've provided, and transitions from non-adjacent states are zero.
+
+\subsubsection*{Step 3: Normalization of \( \alpha_1 \)}
+After calculating the raw values of \( \alpha_1(j) \) for each state, we must normalize them so they sum up to 1:
+
+\[ \sum_{j=1}^{6} \alpha_1(j) = 1 \]
+
+To normalize, calculate the sum of the raw \( \alpha_1(j) \) values and then divide each \( \alpha_1(j) \) by this sum to get the normalized probabilities.
+
+\section{Smoothing}
+
+Forward-backward smoothing in the context of Hidden Markov Models (HMM) is an inference technique used to estimate the state of a system across all time points, given the entire sequence of observations. This is in contrast to filtering, which estimates the state only up to the current observation. Smoothing takes into account both past and future observations, providing a more accurate estimate of the state at each time point after all observations have been made.
+
+\subsection*{1) Main Goal of Forward-Backward Smoothing and Its Applications}
+The main goal of forward-backward smoothing is to compute the posterior distribution of each state over time, given the entire sequence of observations. This provides a refined estimate of the system's states by incorporating the full context of observed data.
+
+Applications of smoothing are diverse and include:
+
+\begin{itemize}
+  \item \textbf{Bioinformatics:} Determining the most likely sequence of states (such as gene sequences) that could result in a given set of observed data.
+  \item \textbf{Robotics:} Reconstructing the most probable path a robot has taken, based on a series of sensor readings.
+  \item \textbf{Economics:} Estimating unobservable economic factors over time from observable indicators.
+  \item \textbf{Speech Recognition:} Improving the accuracy of transcribed text by considering the context of the whole sentence or paragraph rather than just individual words.
+\end{itemize}
+
+\subsection*{2) Mathematical Definition of Smoothing}
+Mathematically, smoothing is defined by the conditional probability \( p(x_t | y_{1:T}) \), which is the probability of being in state \( x_t \) at time \( t \), given the entire sequence of observations \( y_{1:T} \) from time 1 to \( T \).
+
+\subsection*{3) Definition of the Algorithm}
+The smoothing algorithm involves a forward pass, which computes the forward probabilities \( \alpha_t(j) \), and a backward pass, which computes the backward probabilities \( \beta_t(j) \). These are combined to calculate the smoothed probabilities:
+
+\begin{itemize}
+  \item \textbf{Forward Pass:} Same as in filtering, we calculate the forward messages \( \alpha_t(j) \) for each state and time point.
+  \item \textbf{Backward Pass:} We calculate the backward messages \( \beta_t(j) \), starting from the end of the observation sequence and moving backwards.
+\[ \beta_{t-1}(i) = \sum_{x \in X} p(y_t|x) p(x_t|x_{t-1}) \beta_t(x_t) \]
+  \item \textbf{Smoothing:} The smoothed estimate of the state is obtained by combining the forward and backward messages:
+\[ p(x_t | y_{1:T}) = \frac{\alpha_t(x_t) \beta_t(x_t)}{\sum_{x \in X} \alpha_t(x) \beta_t(x)} \]
+\end{itemize}
+
+\subsection*{4) Step-by-Step Algorithm with the Frog Example}
+Using the frog example, let's apply forward-backward smoothing:
+
+\begin{itemize}
+  \item \textbf{Forward Pass:} Compute the forward probabilities \( \alpha_t(j) \) for each state \( j \) at each time \( t \) using the Forward Algorithm, as previously described.
+  \item \textbf{Backward Pass:} Initialize \( \beta_T \)
+
+Then for each time step \( t \) from \( T-1 \) down to 1, and for each state \( i \), compute the backward message \( \beta_{t}(i) \) using the formula:
+
+\[ \beta_{t}(i) = \sum_{j=1}^{K} p(y_{t+1}|x_{t+1}=j) \cdot A_{i,j} \cdot \beta_{t+1}(j) \]
+
+where \( p(y_{t+1}|x_{t+1}=j) \) is the emission probability of observing \( y_{t+1} \) when in state \( j \), and \( A_{i,j} \) is the transition probability from state \( i \) to state \( j \).
+
+\subsubsection*{Step 1: Backward Initialization for \( \beta_T \)}
+At time T, initialize the backward probabilities for all states to 1:
+
+\[ \beta_T(j) = 1 \text{ for } j = 1, \ldots, 6 \]
+
+\subsubsection*{Step 2: Backward Recursion for \( \beta_{T-1} \) to \( \beta_1 \)}
+For each state i at time \( t = T-1 \), calculate \( \beta_{T-1}(i) \) using the formula:
+
+\[ \beta_{T-1}(i) = \sum_{j=1}^{6} A_{i,j} \cdot B_j(y_T) \cdot \beta_T(j) \]
+
+Since \( \beta_T(j) \) are all 1, we only need to consider the transition probabilities \( A_{i,j} \) and the emission probabilities \( B_j(y_T) \). Let's perform this calculation for \( t = T-1 \) as an example:
+
+For \( i = 1 \):
+
+\[ \beta_{T-1}(1) = A_{1,1} \cdot B_1(y_T) \cdot \beta_T(1) + A_{1,2} \cdot B_2(y_T) \cdot \beta_T(2) + \ldots + A_{1,6} \cdot B_6(y_T) \cdot \beta_T(6) \]
+
+\[ \beta_{T-1}(1) = 0.4 \cdot 0.9 + 0.6 \cdot 0.5 + 0 \cdot 0 + 0 \cdot 1 + 0 \cdot 1 + 0 \cdot 1 \]
+
+\[ \beta_{T-1}(1) = 0.36 + 0.3 + 0 + 0 + 0 + 0 \]
+
+\[ \beta_{T-1}(1) = 0.66 \]
+
+Similarly, calculate \( \beta_{T-1}(i) \) for \( i = 2 \) to \( i = 6 \) using the respective transition probabilities \( A_{i,j} \) and emission probabilities \( B_j(y_T) \).
+
+\subsubsection*{Step 3: Continue Backward Recursion for \( \beta_{t} \)}
+Repeat the backward recursion step for each time \( t \) from \( T-2 \) down to 1, using the formula:
+
+\[ \beta_{t}(i) = \sum_{j=1}^{6} A_{i,j} \cdot B_j(y_{t+1}) \cdot \beta_{t+1}(j) \]
+
+\subsubsection*{Step 4: Normalization of \( \beta_t \)}
+After calculating the raw values of \( \beta_t(i) \) for each state at each time step, normalize them to ensure they are proper probabilities.
+
+For the frog example, this would involve calculating the backward probabilities starting from the last observation and moving backwards through time.
+  \item \textbf{Smoothing:} After computing both \( \alpha_t(j) \) and \( \beta_t(j) \), combine them to get the smoothed probability for each state at each time point:
+
+\[ p(x_t | y_{1:T}) = \frac{\alpha_t(j) \cdot \beta_t(j)}{\sum_{x \in X} \alpha_t(x) \cdot \beta_t(x)} \]
+
+This probability is normalized over all states to ensure that the probabilities sum to 1.
+\end{itemize}
+
+The smoothing probabilities provide a retrospective estimate of the state of the system at each time point, given the entire sequence of observations.
+
+\subsection*{5) Challenges of Smoothing}
+Some challenges associated with forward-backward smoothing include:
+
+\begin{itemize}
+  \item \textbf{Computational Complexity:} Similar to filtering, the complexity scales with the number of states and the length of the observation sequence.
+  \item \textbf{Storage Requirements:} Smoothing requires storing all forward and backward probabilities, which can be substantial for long sequences or large state spaces.
+  \item \textbf{Numerical Stability:} The backward pass can also suffer from numerical underflow, similar to the forward pass, necessitating the use of scaling or log probabilities.
+  \item \textbf{Initial Model Parameters:} Accurate initial estimates of the HMM parameters are crucial for reliable smoothing estimates.
+  \item \textbf{Observation Sequence Length:} Smoothing is less suitable for real-time applications since it requires the entire observation sequence before computing the state estimates.
+\end{itemize}
+
+The overall computational cost of the forward-backward algorithm is \( O(T \cdot K^2) \), which is similar to filtering but requires two passes through the data. Despite these challenges, smoothing is a powerful technique for obtaining the most probable states over time in an HMM.
+
+To calculate the backward probabilities \(\beta\) in the frog example, we will use the same logic as the forward probabilities \(\alpha\) but in reverse order. We will assume that we have the forward probabilities for all states up to a certain time T and that the observations from the detector are available for the entire duration.
+
+For the backward probabilities, the initialization step at time T (the last time point) is given by:
+
+\[ \beta_T(j) = 1 \text{ for all states } j \]
+
+Now let's calculate the backward probabilities step by step for each previous time point, assuming that the last observation was \( y_T = 1 \) (detection) and working our way backwards.
+\section{MAP estimation and Viterbi algorithm}
+MAP estimation and the Viterbi algorithm are used in Hidden Markov Models (HMM) to find the most probable sequence of states (also known as the Viterbi path) that explains a sequence of observations.
+
+\subsection*{1) Main Goal of MAP Estimation and the Viterbi Algorithm}
+The main goal of Maximum A Posteriori (MAP) estimation in the context of HMMs is to find the sequence of states that has the highest posterior probability given the sequence of observations. The Viterbi algorithm is a dynamic programming approach used to efficiently solve the MAP estimation problem.
+
+\subsection*{2) Mathematical Definition of MAP Estimation}
+In mathematical terms, MAP estimation aims to calculate:
+
+\[ \hat{x}_{0:T} = \arg \max_{x_{0:T}} p(x_{0:T}|y_{1:T}) \]
+
+This is the sequence of states \( x_{0:T} \) that maximizes the probability of the state sequence given the observations \( y_{1:T} \).
+
+\subsection*{3) Definition of the Viterbi Algorithm}
+The Viterbi algorithm involves two main steps:
+
+\begin{itemize}
+  \item \textbf{Recursion:} Compute the maximum probability of the most probable path leading to each state at each time.
+  \item \textbf{Backtracking:} Trace back the most probable path (Viterbi path) that leads to the maximum probability at the final time.
+\end{itemize}
+
+\subsection*{4) Step-by-Step Algorithm with the Frog Example}
+Let's apply the Viterbi algorithm to the frog example:
+
+\begin{itemize}
+  \item \textbf{Initialization:} We start by setting the initial probabilities \( \mu(i) \) for each state \( i \), representing the probability of starting in each state.
+  
+  \item \textbf{Recursion:} For each time step \( t \) from 1 to \( T \), and for each state \( j \), compute the maximum probability of any path that ends in state \( j \) at time \( t \) using the formula:
+\[ V_t(j) = \max_{i} \left[ V_{t-1}(i) \cdot A_{i,j} \right] \cdot B_j(y_t) \]
+where \( V_t(j) \) is the maximum probability at time \( t \) for state \( j \), \( A_{i,j} \) is the transition probability from state \( i \) to state \( j \), and \( B_j(y_t) \) is the emission probability of observing \( y_t \) given state \( j \).
+
+  \item \textbf{Termination:} At the final time \( T \), find the state that has the highest probability:
+\[ \hat{x}_T = \arg \max_{j} V_T(j) \]
+
+  \item \textbf{Backtracking:} Trace back the path from state \( \hat{x}_T \) to \( \hat{x}_0 \) to find the most probable sequence of states.
+\end{itemize}
+
+\subsection*{5) Limitations and Challenges}
+The Viterbi algorithm, while efficient, has limitations similar to other HMM algorithms:
+
+\begin{itemize}
+  \item \textbf{Computational Complexity:} The Viterbi algorithm
+
+has a computational complexity of \( O(T \cdot K^2) \), which can become prohibitive for models with a large number of states or long sequences of observations.
+
+  \item \textbf{Model Assumptions:} The algorithm assumes the Markov property and that the model parameters (transition and emission probabilities) are known and stationary. If these assumptions are violated, the algorithm's performance may degrade.
+
+  \item \textbf{Local Optima:} The Viterbi algorithm finds the most probable path but not necessarily all probable paths. It may miss alternative explanations of the observed data that are almost as likely as the best one it finds.
+
+  \item \textbf{Observation Independence:} The algorithm assumes that observations are independent given the state sequence. In real-world situations where observations are correlated, this can lead to inaccuracies.
+
+  \item \textbf{Parameter Estimation Dependence:} The performance of the Viterbi algorithm is heavily dependent on the accuracy of the estimated parameters of the HMM. Poor estimation can result in incorrect inference of the state sequences.
+
+The Viterbi algorithm is widely used because it is an exact method for finding the most probable state sequence in an HMM, making it valuable for applications like decoding in communication systems, speech recognition, and bioinformatics. However, these limitations must be taken into account, and in some cases, alternative algorithms or model extensions may be necessary to address them.
+
+\end{document}
+
+\subsection{Intuition}.
+Imagine you're a detective trying to figure out the daily routine of a mysterious person based solely on indirect clues. Each day, they either go to the gym or the cafe, but you don't see them go—you only find a clue afterwards, like a used gym towel or a coffee cup.
+
+Now, the person has a pattern (which we know as the "states" in HMM): after the gym, they're more likely to go to the cafe the next day to relax, and vice versa. But this isn't a strict rule; sometimes they might go to the gym several days in a row or visit the cafe multiple times. These are your transition probabilities.
+
+Each activity leaves a clue (which we know as "observations" in HMM): a gym day increases the chance of finding a used towel, and a cafe day increases the chance of finding a coffee cup. But sometimes they might bring coffee to the gym or forget their towel at the cafe, so the clue isn't always accurate. These are your emission probabilities.
+
+The Viterbi algorithm is like a process where you lay out all possible patterns of this person's visits over a week and then start eliminating the least likely ones based on the clues and the known transition tendencies. Here's how it works:
+
+1. Initialization: On the first day, you consider the likelihood of starting at the gym or cafe based on what you know about their past habits, plus the clue you found.
+
+2. Recursion: For each following day, you look at all the possible places they could have been the day before and choose the most likely place for today, given yesterday's most likely place and today's clue. You keep doing this for each day, always building on the most likely story you've pieced together so far.
+
+3. Termination: By the end of the week, you have a chain of the most likely daily activities for each day, which forms the most likely pattern of behavior for the entire week based on all the clues.
+
+4. Path storage: While you're figuring out each day, you also keep a record of your decisions. If today the most likely story is that they went to the cafe, you remember what the most likely place was yesterday that led to today's decision. This way, by the end, you can trace back through your records to reconstruct the most likely entire week's routine.
+
+The backward values \( m_t(i) \) in the Viterbi algorithm don't tell you the path directly but help in this decision-making process. \textbf{They represent how likely each subsequent clue is, given a certain state on a certain day. }You use this information to make better guesses about where the person was on each day.
+
+So, the Viterbi algorithm is like a very methodical way of guessing the most likely sequence of hidden events (the person's activities) based on the visible outcomes (the clues) and what you know about their behavior patterns (the transition and emission probabilities).
+\end{document}
