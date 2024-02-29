@@ -1,0 +1,684 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage[version=4]{mhchem}
+\usepackage{stmaryrd}
+\usepackage{bbold}
+
+\title{Introduction to RJMCMC}
+
+\author{Max Lang}
+\date{}
+
+
+\begin{document}
+\maketitle
+
+\section*{Why RJMCMC}
+In Bayesian statistics, where we infer parameters based on observed data, we're often faced with models of various complexities. A key challenge arises when these models have different numbers of parameters, leading to varying dimensions in parameter space.
+
+Reversible Jump Markov Chain Monte Carlo (RJMCMC) is a method designed to navigate this variable-dimension landscape. It allows for a  transition between models of different complexities, by jumping across spaces of varying dimensions. Essentially, it extends the traditional MCMC algorithm to accommodate models where the number of parameters isn't fixed.
+
+Consider, for instance, choosing between two models (see below) for data analysis: one with a single parameter and another with two. Traditional MCMC methods would struggle here, as they typically require the dimension of the parameter space to remain constant. RJMCMC, however, can 'jump' between the parameter spaces of these two models, evaluating their fit to the data without being confined to a fixed number of parameters.
+
+\subsection*{Motivating example}
+In the joint distribution of the model and the parameter,
+
+$$
+\pi(\theta, m \mid y) \propto p(y \mid \theta, m) \pi(\theta \mid m) \pi(m), \quad \theta \in \Omega_m, m \in \mathcal{M},
+$$
+
+the dimension of the parameter $\theta$ may vary depending on the model. In Section 6.2.1
+
+\begin{center}
+\begin{tabular}{r|l|l|l}
+model index & model & parameter & parameter space \\
+\hline
+$m=1$ & $Y=\theta_1+\epsilon$ & $\theta=\left(\theta_1\right)$ & $\Omega_1=\Re$ \\
+$m=2$ & $Y=\theta_1+\theta_2 x+\epsilon$ & $\theta=\left(\theta_1, \theta_2\right)$ & $\Omega_2=\Re^2$ \\
+\end{tabular}
+\end{center}
+
+We say that "The number of things we dont know is one of things we dont know" because we dont know if we have to estimate one parameter or two. This presents some computational issues. For example if we use MCMC to sample $(\theta, m) \sim \pi(\cdot \mid y)$ then the MCMC algorithm must jump between spaces of different dimension to allow the dimension of $\theta$ to vary. The trick of using latent indicator variables and spike and slab priors described in other documents is too restricted. We may wish to use other priors. In this example $\mathcal{M}=\{1,2\}$ and
+
+$$
+(\theta, m) \in \Omega^*,
+$$
+
+where
+
+$$
+\Omega^*=\bigcup_{m \in \mathcal{M}} \bigcup_{\theta \in \Omega_m}\{(\theta, m)\} .
+$$
+
+We can alternatively write
+
+$$
+\Omega^*=\left(\Omega_1 \times\{1\}\right) \cup\left(\Omega_2 \times\{2\}\right)
+$$
+
+in terms of two simple product spaces.
+
+\subsubsection*{Deep Dive}
+To provide a practical example using RJMCMC, let's consider the scenario of model selection where we have count data that could potentially come from two different types of distributions: a Poisson distribution or a negative binomial distribution. This kind of problem is common in many fields, such as ecology or healthcare analytics, where we count the number of occurrences of an event.
+
+Suppose we have count data \( X_1, X_2, \ldots, X_n \) and two models:
+
+\begin{enumerate}
+  \item \textbf{Model 1 (Poisson Model):} This model assumes the data comes from a Poisson distribution with parameter \( \lambda \), which represents the rate at which the events occur.
+
+  \item \textbf{Model 2 (Negative Binomial Model):} This model is used when there is over-dispersion in the data (the variance is greater than the mean), which the Poisson model can't account for. It has two parameters: \( p \) representing the probability of success, and \( r \) the number of failures until the experiment is stopped.
+
+\end{enumerate}
+
+Now, using RJMCMC, we wish to determine which model better describes our data. RJMCMC allows us to move between these models during the sampling process, even though they have different numbers of parameters. This means we don't just estimate the parameters within each model; we also estimate the probability that each model is the correct one given the data.
+
+Here's how it might work in practice:
+
+\begin{itemize}
+  \item We start with a prior belief about the plausibility of each model (e.g., equal probability for both).
+  \item We calculate the likelihood of observing our data under each model.
+  \item Using RJMCMC, we generate a chain of samples that includes both model parameters and model indices.
+  \item As we sample, we might propose to switch from the Poisson model to the Negative Binomial model or vice versa. The acceptance of such a move depends on a detailed balance that ensures the Markov chain converges to the correct target distribution.
+  \item After many iterations, we examine the chain. The relative frequency of each model within the chain gives us an estimate of its posterior probability, while the parameter samples give us posterior distributions for \( \lambda \), \( p \), and \( r \).
+\end{itemize}
+
+The beauty of RJMCMC is that it integrates model selection and parameter estimation into a single coherent process. It's a powerful tool that adds an extra layer of flexibility to the MCMC approach when we are uncertain about the model structure.
+
+\section*{Intuitive Explanation}
+In simpler terms, RJMCMC adapts the traditional MCMC process to work in situations where we might need to compare and choose between models that don't all play by the same rules in terms of how many parameters they have. This is important in Bayesian model selection, where the goal is to weigh the evidence of the observed data to determine which model is most plausible. RJMCMC does this by allowing jumps between different model dimensions, thus evaluating a more comprehensive set of models and leading to more informed inferences.
+
+\section*{MCMC with Jacobians}
+
+\subsection*{Introduction}
+We will start with the foundational ideas of traditional fixed-dimension Markov Chain Monte Carlo (MCMC) methods and then extend them to include Jacobians, which are crucial for proposals that involve transformations changing the dimensionality.
+
+In a fixed-dimension setting, MCMC algorithms target a probability density \(\pi(\theta)\) on a space \(\Omega = \mathbb{R}^p\). The goal is to sample from this target density using a proposal density \(q(\theta'|\theta)\), which suggests new states \(\theta'\) given the current state \(\theta\). However, when we wish to jump between models of different dimensions, we encounter the challenge of ensuring that our jumps are both reversible and preserve the correct target distribution. This is where the concept of Jacobians becomes essential.
+
+A Jacobian is a determinant of a matrix of partial derivatives, which quantifies how a function changes as its input changes. In the context of MCMC, we introduce Jacobians to adjust for the change in volume when we transform our sampling space. This is necessary because the proposal density must account for the transformation's effect on the space's geometry.
+
+To generalize the proposal mechanism in MCMC for variable-dimensional problems, we introduce transformations that can map between spaces of different dimensions. For instance, let's say our current state has a parameter \(\theta\) in \(\mathbb{R}^p\), and we wish to propose a new state with a parameter \(\theta'\) in \(\mathbb{R}^{p'}\). We would use a bijective function \(g(\cdot)\) that maps between these spaces, alongside an auxiliary variable \(u\) to propose \(\theta'\). This function is often chosen to be invertible to ensure reversibility, a key property for MCMC algorithms.
+
+The Jacobian comes into play when we calculate the acceptance probability for the proposed jump. The acceptance probability must now include the Jacobian determinant of the transformation to correct for the change in dimension. This ensures that our sampling algorithm respects the detailed balance and thus converges to the correct target distribution.
+
+For example, if we propose a new parameter \(\theta'\) using a function \(\psi_1(\theta, u)\) and an auxiliary variable \(u\), the density for \(\theta'\) is given by the product of the density of \(u\) and the absolute value of the Jacobian determinant of \(\psi_1\) with respect to \(u\). This is necessary to maintain the correct probabilistic weight in the new space.
+
+\subsection*{Intuition}
+When we use MCMC to sample from spaces of varying dimensions, we need to correct for how much 'space' or 'volume' our parameters occupy after a transformation. Think of it as adjusting for the stretch or compression of space when we switch between dimensions. Jacobians provide this adjustment, ensuring that our samples accurately represent the target distribution, even when we hop between models of different complexities.
+
+This framework sets the stage for the RJMCMC algorithm, which allows for such dimension-jumping proposals, facilitating the sampling from posterior distributions over models with varying numbers of parameters.
+
+The provided definition and proposition offer a framework for constructing proposal distributions in a Markov Chain Monte Carlo (MCMC) simulation, especially when considering transformations that maintain the dimensionality of the parameter space. Let's embed this framework into the context of a "random-walk" proposal, a common strategy in MCMC algorithms.
+
+\subsection*{Definitions, Assumptions and Worked Example:}
+
+\subsubsection*{Definition Proposal variable and function}
+Let $\mathcal{U}=\mathbb{R}^p$ or a given region of $\mathbb{R}^p$. Let $g(u), u \in$ $\mathcal{U}$ be a density on $\mathcal{U}$. For $\theta \in \Omega$ and $u \in \mathcal{U}$ let $\psi_1(\theta, u)$ be an invertible differentiable function of its arguments mapping $\Omega$ to itself given $u$ so that $\psi_1: \Omega \times \mathcal{U} \rightarrow \Omega$. Given $\theta$, the proposal simulates $u \sim g(u)$ and sets $\theta^{\prime}=\psi_1(\theta, u)$. Call $u$ the proposal variable and $\psi_1$ the proposal function.
+
+The definition introduces a proposal function, \(\psi_1(\theta, u)\), that generates a new proposal, \(\theta'\), from the current state, \(\theta\), using an auxiliary variable, \(u\), drawn from a specified distribution, \(g(u)\). This function must be invertible and differentiable, ensuring that we can both propose forward and find our way back, a necessary condition for reversibility in MCMC.
+
+\subsubsection*{Example Part 1}
+For $a>0$ let $u \sim U(0,1)$ and set $\theta^{\prime}=\theta+a(2 u-1)$ to get our standard "random-walk" proposal $\theta^{\prime} \sim U(\theta-a, \theta+a)$. Here
+
+$$
+g(u)=\mathbb{I}_{0<u<1}, \quad \psi_1(\theta, u)=\theta+a(2 u-1) .
+$$
+
+This is invertible at fixed $\theta$ since $u=\left(a+\theta^{\prime}-\theta\right) / 2 a$.\\
+In the "random-walk" proposal example, we let \(u\) be a uniform random variable, \(U(0,1)\), and use it to propose \(\theta'\) as \(\theta + a(2u - 1)\), where \(a\) is a scaling factor determining the step size of our walk. This results in \(\theta'\) being uniformly distributed between \(\theta-a\) and \(\theta+a\).
+
+\subsubsection*{Proposition 7.4}
+ The conditional distribution of $\theta^{\prime}$ given $\theta$ under the proposal in Definition 7.1 is given at $\theta^{\prime}=\psi_1(\theta, u)$ by
+
+$$
+q\left(d \theta^{\prime} \mid \theta\right)=g(u) d u .
+$$
+
+The density for $\theta^{\prime}$ determined by the pair $g, \psi_1$ is
+
+$$
+q\left(\theta^{\prime} \mid \theta\right)=g(u)\left|\partial \theta^{\prime} / \partial u\right|^{-1},
+$$
+
+where $u=u\left(\theta^{\prime}\right)$ on the RHS solves $\theta^{\prime}=\psi_1(\theta, u)$ and
+
+$$
+\frac{\partial \theta^{\prime}}{\partial u}=\frac{\partial \psi_1(\theta, u)}{\partial u} .
+$$
+
+The proposition details how to compute the proposal density \(q(\theta'|\theta)\) using the transformation function \(\psi_1\) and the density \(g(u)\). The crux of the proposition is the inclusion of the Jacobian determinant, \(|\partial \theta' / \partial u|^{-1}\), which corrects for the scaling effect of the transformation on the probability density. This ensures that our proposal density is correctly normalized and respects the principle of detailed balance.
+
+\subsubsection*{Example Part 2}
+$\theta^{\prime}=\theta+a(2 u-1)$ and $g(u)=\mathbb{I}_{0<u<1}$,
+
+$$
+\begin{aligned}
+q\left(\theta^{\prime} \mid \theta\right) & =\mathbb{I}_{0<\left(a+\theta^{\prime}-\theta\right) / 2 a<1}\left|\partial \theta^{\prime} / \partial u\right|^{-1} \\
+& =\frac{1}{2 a} \mathbb{I}_{\theta-a<\theta^{\prime}<\theta+a}
+\end{aligned}
+$$
+
+since $\left|\partial \theta^{\prime} / \partial u\right|=2 a$. That is $\theta^{\prime} \sim U(\theta-a, \theta+a)$.
+
+Following the example, since \(g(u) = \mathbb{I}_{0<u<1}\) (the indicator function for \(u\) between 0 and 1) and the transformation is a simple linear shift and scale, the Jacobian determinant is constant, \(|\partial \theta' / \partial u| = 2a\). The proposal density simplifies to \(q(\theta'|\theta) = \frac{1}{2a} \mathbb{I}_{\theta-a<\theta'<\theta+a}\), which confirms that \(\theta'\) is uniformly distributed over the interval \([\theta-a, \theta+a]\).
+
+\subsection*{Example Detailed}
+
+\subsubsection*{Example Part 1}
+For $a>0$ let $u \sim U(0,1)$ and set $\theta^{\prime}=\theta+a(2 u-1)$ to get our standard "random-walk" proposal $\theta^{\prime} \sim U(\theta-a, \theta+a)$. Here
+
+$$
+g(u)=\mathbb{I}_{0<u<1}, \quad \psi_1(\theta, u)=\theta+a(2 u-1) .
+$$
+
+This is invertible at fixed $\theta$ since $u=\left(a+\theta^{\prime}-\theta\right) / 2 a$.\\
+In the "random-walk" proposal example, we let \(u\) be a uniform random variable, \(U(0,1)\), and use it to propose \(\theta'\) as \(\theta + a(2u - 1)\), where \(a\) is a scaling factor determining the step size of our walk. This results in \(\theta'\) being uniformly distributed between \(\theta-a\) and \(\theta+a\).
+
+\subsubsection*{Example Part 2}
+$\theta^{\prime}=\theta+a(2 u-1)$ and $g(u)=\mathbb{I}_{0<u<1}$,
+
+$$
+\begin{aligned}
+q\left(\theta^{\prime} \mid \theta\right) & =\mathbb{I}_{0<\left(a+\theta^{\prime}-\theta\right) / 2 a<1}\left|\partial \theta^{\prime} / \partial u\right|^{-1} \\
+& =\frac{1}{2 a} \mathbb{I}_{\theta-a<\theta^{\prime}<\theta+a}
+\end{aligned}
+$$
+
+since $\left|\partial \theta^{\prime} / \partial u\right|=2 a$. That is $\theta^{\prime} \sim U(\theta-a, \theta+a)$.
+
+\begin{enumerate}
+  \item \textbf{Initialization}: You start with a current parameter value, \(\theta\), which is a point in your parameter space.
+
+  \item \textbf{Random Variable Generation}: You generate a random variable \(u\) from a uniform distribution, \(U(0,1)\). This random variable \(u\) is used to introduce randomness into the proposal mechanism of the MCMC algorithm.
+
+  \item \textbf{Proposal Mechanism}: The new proposed state \(\theta'\) is calculated using the formula \(\theta' = \theta + a(2u - 1)\), where \(a\) is a positive constant that controls the step size. This proposal mechanism is known as the "random-walk" proposal because it symmetrically allows for a move in either direction from the current state \(\theta\), with the size of the step controlled by the constant \(a\).
+
+  \item \textbf{Uniform Distribution of the New State}: The resulting proposed state \(\theta'\) will be uniformly distributed between the range \([\theta-a, \theta+a]\) because the transformation \(2u - 1\) maps \(u\) from the unit interval \([0,1]\) to \([-1,1]\), and scaling by \(a\) then shifts this interval to \([\theta-a, \theta+a]\). This ensures that the proposed moves are symmetric and the algorithm can explore the parameter space efficiently.
+
+  \item \textbf{Invertibility}: This specific proposal is invertible because, given a proposed state \(\theta'\), you can uniquely determine the corresponding random variable \(u\) that was used to generate it. This is done by rearranging the proposal equation to solve for \(u\), which gives \(u = \frac{a + \theta' - \theta}{2a}\).
+
+  \item \textbf{Jacobian Determinant}: The Jacobian determinant of the transformation used to propose \(\theta'\) is a measure of how the proposal function stretches or squeezes the probability density in the region of the proposed move. For this linear transformation, the Jacobian determinant is simply the constant \(2a\), which is the derivative of \(\psi_1(\theta, u)\) with respect to \(u\).
+
+  \item \textbf{Proposal Density}: The proposal density \(q(\theta'|\theta)\) reflects the probability of proposing a move to \(\theta'\) given that you are currently at \(\theta\). For this example, \(q(\theta'|\theta)\) simplifies to \(\frac{1}{2a}\) within the interval \([\theta-a, \theta+a]\) and zero otherwise. This density is derived from the product of the density of \(u\) (which is 1 since \(u\) is uniform on \([0,1]\)) and the reciprocal of the absolute value of the Jacobian determinant.
+
+\end{enumerate}
+
+By incorporating the Jacobian determinant into the proposal density, MCMC algorithms like the Metropolis-Hastings ensure that detailed balance is maintained, and hence the stationary distribution of the Markov chain corresponds to the target distribution, even when proposing states that require transformations
+
+of the parameter space.
+
+\subsection*{Intuition Box:}
+Imagine you're on a straight road (\(\theta\)) and you can step either forward or backward with your eyes closed (randomness introduced by \(u\)). The step size is not fixed; it can vary within a range determined by \(a\). The "random-walk" proposal method is like taking a random step of a size between \(-a\) and \(a\) and seeing where you end up (\(\theta'\)). The uniform distribution ensures that each step within this range is equally likely, and you won't have a bias towards stepping more in one direction than the other.
+
+This method's invertibility is akin to leaving breadcrumbs so you can find your way back to the starting point (\(\theta\)). No matter where you step, you can calculate exactly where you started based on where you are and how far you could have stepped. This is crucial because, in MCMC, you need to know the probability of both moving to the new state and returning to the old state to ensure the process is reversible and thus reaches equilibrium.
+
+The Jacobian in this case tells us that the transformation's "stretch" of the probability space is uniform across the range of possible steps, which simplifies things greatly. It's as if each potential step size changes the space by the same amount, and hence the probability of each step remains balanced and fair across the whole interval.
+
+By integrating these concepts, we ensure that our "random-walk" proposal maintains the Markov chain's convergence properties and accurately reflects the target distribution we aim to explore.
+
+\section*{MCMC Using Transformations}
+When we deal with MCMC (Markov Chain Monte Carlo), we often work in a fixed-dimensional space. However, real-world applications sometimes require us to move fluidly between spaces of different dimensions. This is where transformations come into play, acting as bridges between these spaces.
+
+\subsection*{Motivation:}
+Imagine trying to navigate a city where certain roads only allow vehicles of specific sizes. Traditional MCMC methods are like cars that can't change size; they're restricted to roads of one size. Transformations in MCMC are like magical vehicles that can adjust their size to travel on any road, allowing us to explore the entire city efficiently.
+
+\subsection*{Theorem 7.14}
+Let $\left(\theta^{\prime}, u^{\prime}\right)=\psi(\theta, u)$ be an invertible, differentiable involution for $\theta, \theta^{\prime} \in \Omega$ and $u, u^{\prime} \in \mathcal{U}$. The MCMC update with proposal $u \sim g(u),\left(\theta^{\prime}, u^{\prime}\right)=\psi(\theta, u)$ and acceptance probability
+
+$$
+\alpha\left(\theta^{\prime} \mid \theta\right)=\min \left\{1, r\left(\theta^{\prime}, u^{\prime} \mid \theta, u\right)\right\}
+$$
+
+with $r\left(\theta^{\prime}, u^{\prime} \mid \theta, u\right)$ given by
+
+$$
+r\left(\theta^{\prime}, u^{\prime} \mid \theta, u\right)=\frac{\pi\left(\theta^{\prime}\right) g\left(u^{\prime}\right)}{\pi(\theta) g(u)} J_\psi(\theta, u),
+$$
+
+and $J_\psi$ the Jacobian for the transformation $\left(\theta^{\prime}, u^{\prime}\right)=\psi(\theta, u)$,
+
+$$
+J_\psi(\theta, u)=\left|\frac{\partial\left(\theta^{\prime}, u^{\prime}\right)}{\partial(\theta, u)}\right|,
+$$
+
+satisfies detailed balance in Equation 2.4 with respect to $\pi(\theta)$.
+
+\subsection*{Explanation:}
+Theorem 7.14 lays out the conditions under which we can correctly use such transformations in MCMC. It requires the transformation, \(\psi(\theta, u)\), to be an involution—meaning it is its own inverse—and differentiable, ensuring smooth transitions between states. This involution property means that if you transform \(\theta\) to \(\theta'\) using \(u\), applying the transformation again will get you back to \(\theta\) using \(u'\).
+
+\subsection*{The Acceptance Probability:}
+The theorem also defines the acceptance probability \(\alpha(\theta'|\theta)\), which determines whether we accept or reject the proposed move to \(\theta'\). This probability ensures that our sampling respects the target distribution \(\pi(\theta)\). The ratio \(r(\theta', u'|\theta, u)\) compares the density of the proposed state \(\theta'\) with the current state \(\theta\), adjusting for the transformation's effect on the probability density using the Jacobian \(J_{\psi}(\theta, u)\).
+
+\subsection*{Step-by-Step Implementation:}
+\begin{enumerate}
+  \item \textbf{Choose a Proposal}: From the current state \(\theta\), select a proposal variable \(u\) from the density \(g(u)\).
+  \item \textbf{Transform to New State}: Apply the transformation \(\psi(\theta, u)\) to propose a new state \(\theta'\).
+  \item \textbf{Calculate Jacobian}: Compute the Jacobian determinant \(J_{\psi}(\theta, u)\) to adjust for changes in volume of the probability space.
+  \item \textbf{Accept or Reject}: Use the acceptance probability \(\alpha(\theta'|\theta)\) to decide if the move to \(\theta'\) should be accepted.
+  \item \textbf{Repeat}: If accepted, move to \(\theta'\); if rejected, stay at \(\theta\). Then, select a new proposal variable and repeat the process.
+\end{enumerate}
+
+\subsection*{Intuition Box:}
+Using transformations in MCMC is like using an elevator that can go not just up and down, but can also reshape its interior to fit an uncertain number of passengers. The Jacobian is the mechanism that ensures the elevator's interior is appropriately resized, and the acceptance probability is akin to an intelligent system that decides whether the elevator should move to the next floor or stay put, based on how crowded it is. This intelligent decision-making is guided by the overarching goal of visiting each floor in proportion to its importance, which in MCMC terms, is our target distribution \(\pi(\theta)\).
+
+\subsection*{Example for MCMC with transformations}
+
+\subsubsection*{Random walk on a log scale}
+Suppose we are targeting $\pi(\theta)=e^{-\theta}, \theta>0$ so $\theta \sim \exp (1)$ and we use the proposal
+
+$$
+u \sim U(1 / 2,2), \quad \theta^{\prime}=u \theta \quad \text { so that } \quad\left(\theta^{\prime}, u^{\prime}\right)=(u \theta, 1 / u) .
+$$
+
+Here $g(u)=\mathbb{I}_{0.5<u<2} /(2-0.5)$ and $\operatorname{dim}\left(\theta^{\prime}, u^{\prime}\right)=\operatorname{dim}(\theta, u)=2$ so dimensions match. To work out $\psi_2(\theta, u)=1 / u$ we simply observe that $\theta^{\prime}=u \theta$ so $\theta=\theta^{\prime} / u$ so $u^{\prime}=1 / u$ is the value of the proposal variable for the reverse move. The Jacobian equals $1 / u$ since
+
+$$
+\left|\frac{\partial\left(\theta^{\prime}, u^{\prime}\right)}{\partial(\theta, u)}\right|=\left|\begin{array}{cc}
+u & \theta \\
+0 & -1 / u^2
+\end{array}\right|=1 / u
+$$
+
+The algorithm is as follows. If $X_t=\theta$ then
+
+\begin{enumerate}
+  \item simulate $u \sim U(1 / 2,2)$ and set $\theta^{\prime}=u \theta$;
+  \item with probability
+\end{enumerate}
+
+$$
+\alpha\left(\theta^{\prime} \mid \theta\right)=\min \left\{1, \frac{\pi\left(\theta^{\prime}\right) g\left(u^{\prime}\right)}{\pi(\theta) g(u)}\left|\frac{\partial\left(\theta^{\prime}, u^{\prime}\right)}{\partial(\theta, u)}\right|\right\}=\min \left\{1, e^{-\theta^{\prime}+\theta} u^{-1}\right\}
+$$
+
+set $X_{t+1}=\theta^{\prime}$ and otherwise $X_{t+1}=\theta$.\\
+Factors of $g(u) / g\left(u^{\prime}\right)$ cancel in $\alpha$. This proposal is useful if simulating a density which is peaked or diverges at a boundary and I used a variant of this in the radiocarbon dating example MCMC code. This whole framework is a useful rephrasing of MCMC.
+
+\subsubsection*{Setup of the Example:}
+\begin{itemize}
+  \item We are sampling from a target distribution \( \pi(\theta) = e^{-\theta} \), which is an exponential distribution. This type of distribution is heavily skewed with a peak at 0 and a long tail extending to infinity, typically used to model the time between events.
+  \item The proposal for the new state \( \theta' \) is based on a multiplicative factor \( u \), which is drawn from a uniform distribution \( U(1/2, 2) \). This choice of uniform distribution ensures that the proposed moves can either halve or double the current state \( \theta \), adjusted by the random variable \( u \).
+\end{itemize}
+
+\subsubsection*{Intuitive Step-by-Step Explanation:}
+\begin{enumerate}
+  \item \textbf{Proposal Generation:}
+
+  \begin{itemize}
+    \item We generate a random number \( u \) from a uniform distribution between 1/2 and 2.
+    \item We create a new proposal \( \theta' \) by multiplying the current state \( \theta \) by \( u \). This step sizes are multiplicative, which fits the log-scale move, meaning we are exploring the space by orders of magnitude rather than linear increments.
+  \end{itemize}
+  \item \textbf{Calculation of the Jacobian:}
+
+  \begin{itemize}
+    \item The Jacobian here accounts for how the probability volume changes when we move from \( \theta \) to \( \theta' \).
+    \item For our transformation, the Jacobian equals \( 1/u \). Intuitively, this means if our random variable \( u \) is less than 1 (thus we propose to move to a smaller \( \theta' \)), the Jacobian expands the probability volume. If \( u \) is greater than 1, it contracts the volume. This adjustment is necessary to preserve the probability mass in log-scale transformations.
+  \end{itemize}
+  \item \textbf{Acceptance Probability:}
+
+  \begin{itemize}
+    \item The acceptance probability \( \alpha(\theta'|\theta) \) is calculated to decide if we should accept the new proposed state \( \theta' \).
+    \item It is the minimum of 1 and the ratio of the target distribution at \( \theta' \) and \( \theta \), adjusted by the ratio of the proposal density at \( u \) and \( u' \) and the Jacobian.
+    \item Intuitively, this ratio compares how likely the proposed move is under our target distribution versus our current position. If \( \theta' \) is more likely (or not significantly less likely), we'll probably accept the move. The Jacobian's role here ensures that we properly account for the change in scale due to using a log transformation.
+  \end{itemize}
+  \item \textbf{Update Step:}
+
+  \begin{itemize}
+    \item If the proposal \( \theta' \) is accepted (which happens with the calculated probability), we set our new state \( X_{t+1} \) to \( \theta' \).
+    \item If not accepted, we stay at our current state \( \theta \), meaning \( X_{t+1} \) remains as \( X_t \).
+  \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Intuition Box:}
+Think of the MCMC random walk on a log scale like exploring terrain with varying elevation. At each step, you decide to jump to a rock that's either twice as high or half as high from your current position. The Jacobian is like your personal adjustment to how much effort it takes to make the jump based on how far the next rock is. The acceptance probability is like a decision rule that tells you whether the effort to jump is worth it, based on the attractiveness of the new position (how likely it is under the target distribution). If it's a good spot, you make the jump; otherwise, you stay put and reconsider your next move.
+
+\section*{RJMCMC}
+
+\subsection*{A shortcut to RJ-MCMC}
+Reversible Jump Markov Chain Monte Carlo (RJ-MCMC) extends the traditional MCMC framework to handle a space of models of varying dimensionality. Let's go through the provided introduction to RJ-MCMC step by step, focusing on clarity and intuitive understanding:
+
+\textbf{Understanding the Space of Models}:
+
+\begin{itemize}
+  \item We have a set of models \( M \) which are subsets of model indices \( [p] \). Each model is associated with a different number of parameters \( \theta \), such that the number of parameters \( k \) matches the number of model indices in \( m \).
+  \item The goal is to move within this space, either adding or removing parameters to navigate between models.
+\end{itemize}
+
+\textbf{The Proposal Mechanism}:
+
+\begin{itemize}
+  \item The proposal to move from one model to another is like flipping a coin: heads, we add a parameter; tails, we remove one.
+  \item If we add a parameter, we draw its value from the prior distribution of the parameter. If we remove a parameter, we simply discard it from the current model.
+\end{itemize}
+
+\textbf{Calculating the Proposal Probabilities \( Q \)}:
+
+\begin{itemize}
+  \item When we propose to add a parameter, the probability is the product of \( 1/2 \) (for the coin flip), \( 1/(p - |m|) \) (the chance of selecting a particular index to add from those not in the model), and \( \pi(\theta_i) \) (the prior probability of the new parameter).
+  \item When we propose to delete a parameter, it's the product of \( 1/2 \) (for the coin flip) and \( 1/|m| \) (the chance of selecting a particular index to remove from the model).
+\end{itemize}
+
+In order to calculate $Q$ we just write down the probabilities for the sequences of events we realised to get from $(\theta, m)$ to $\left(\theta^{\prime}, m^{\prime}\right)$. We have
+
+$$
+Q\left(\theta^{\prime}, m^{\prime} \mid \theta, m\right)=\left\{\begin{array}{cl}
+1 / 2 \times 1 /(p-|m|) \times \pi\left(\theta_i^{\prime}\right) & \text { if we choose to add, } \\
+1 / 2 \times 1 /|m| & \text { if we choose to delete, }
+\end{array}\right.
+$$
+
+and "going back" from the new state, we have $\left|m^{\prime}\right|=|m|+1$ if we added and $\left|m^{\prime}\right|=|m|-1$ if we deleted. In order to reverse the move we have to pick the component we changed so,
+
+$$
+\begin{aligned}
+Q\left(\theta, m \mid \theta^{\prime}, m^{\prime}\right) & =\left\{\begin{array}{cl}
+1 / 2 \times 1 /\left(p-\left|m^{\prime}\right|\right) \times \pi\left(\theta_i\right) & \text { add back if we chose to delete } \\
+1 / 2 \times 1 /\left|m^{\prime}\right| & \text { delete if we chose to add. }
+\end{array}\right. \\
+& =\left\{\begin{array}{c}
+1 / 2 \times 1 /(p-|m|+1) \times \pi\left(\theta_i\right) \\
+1 / 2 \times 1 /(|m|+1)
+\end{array}\right.
+\end{aligned}
+$$
+
+Let's break down each component of the proposal probabilities \(Q\) for both adding and deleting a component from the model \(m\), to understand how these probabilities are formulated in the context of Bayesian model selection.
+
+\subsubsection*{If We Choose to Add a Component}
+When proposing to add a component to the model, the proposal probability \(Q(\theta', m' | \theta, m)\) consists of several factors:
+
+\begin{enumerate}
+  \item \textbf{Probability of Addition (1/2):} This represents the initial decision to either add or delete a component, which is made by tossing a coin. Thus, there's a 50\% chance (1/2) of attempting to add a component.
+
+  \item \textbf{Inverse of Remaining Choices \((1/(p-|m|))\):} After deciding to add a component, we must choose which of the remaining \(p-|m|\) components to add. The probability of selecting any specific component not already in \(m\) is the inverse of the number of components not in \(m\), \(1/(p-|m|)\), where \(p\) is the total number of possible components and \(|m|\) is the number of components currently in \(m\).
+
+  \item \textbf{Prior Probability of the New Parameter \(\pi(\theta_i')\):} This is the probability of choosing a specific value for the new parameter \(\theta_i'\) according to its prior distribution. This reflects our beliefs about the parameter before observing the data.
+
+\end{enumerate}
+
+\subsubsection*{If We Choose to Delete a Component}
+When proposing to delete a component from the model, the proposal probability \(Q(\theta', m' | \theta, m)\) also consists of specific factors:
+
+\begin{enumerate}
+  \item \textbf{Probability of Deletion (1/2):} Similar to addition, this represents the initial 50\% chance of deciding to delete a component from the model.
+
+  \item \textbf{Inverse of Current Model Size \((1/|m|)\):} If a deletion is to be made, the specific component to be removed is chosen randomly from the \(|m|\) components currently in \(m\). The probability of selecting any specific component for deletion is \(1/|m|\).
+
+\end{enumerate}
+
+\subsubsection*{Reverse Move Probabilities}
+The proposal probabilities for reversing the move (from \(m'\) back to \(m\)) consider the new state of the model and adjust the probabilities accordingly:
+
+\begin{itemize}
+  \item \textbf{For Adding Back (if we originally chose to delete):} The calculation considers the new model size and adjusts the probability of selecting a component to add back, along with the prior probability of the parameter associated with that component.
+
+  \item \textbf{For Deleting (if we originally chose to add):} This reflects the adjusted probability of selecting a component to delete based on the new model size.
+
+\end{itemize}
+
+These components ensure that the proposal probabilities are calculated in a way that respects the detailed balance condition, crucial for the convergence of the Markov Chain Monte Carlo (MCMC) algorithm used in Bayesian model averaging. This balance helps in making the exploration of the model space efficient and in obtaining unbiased estimates of the model parameters.
+
+\textbf{Why No Jacobians?}:
+
+\begin{itemize}
+  \item In this setup, we do not need Jacobians because we're dealing with discrete spaces where we add or remove entire parameters. Jacobians are necessary when transforming continuous spaces and we need to account for how volumes change under the transformation. Here, however, the proposals involve simple discrete changes.
+\end{itemize}
+
+\textbf{Acceptance Probabilities}:
+
+\begin{itemize}
+  \item To decide whether to accept the proposed move, we calculate the acceptance probability \( \alpha \). This is where we use the ratio of the probabilities of the proposed and current models, adjusted for the proposal probabilities.
+  \item The acceptance probabilities ensure that our sampling respects the target distribution and detailed balance, even as we move between models of different dimensions.
+\end{itemize}
+
+\textbf{Intuition Box}:\\
+Think of RJ-MCMC like playing a game of Jenga where each block represents a parameter in your model. You can either add a block (parameter) or remove one, and the game's rules (the acceptance probabilities) tell you whether the move keeps the tower (our model) stable. The goal is to keep playing, finding the tallest stable tower, which represents the best model given the data. Unlike regular Jenga, where removing a piece can make the tower less stable, in RJ-MCMC, sometimes removing a parameter actually makes the model better by simplifying it without losing predictive power.
+
+\section*{RJMCMC Algorithm}
+Suppose $X_t=(\theta, m)$. The state $X_{t+1}$ is determined as follows.
+
+\begin{enumerate}
+  \item Sample $m^{\prime} \sim \rho_{m, m^{\prime}}, m^{\prime} \in \mathcal{M}$. Simulate $u \sim g_{m, m^{\prime}}(\cdot)$.
+  \item $\operatorname{Set}\left(\theta^{\prime}, u^{\prime}\right)=\psi(\theta, u)$.\\
+(a) If $\left|m^{\prime}\right|=|m|+1$ (increase dimension) set
+\end{enumerate}
+
+$$
+\alpha\left(\theta^{\prime}, m^{\prime} \mid \theta, m\right)=\min \left\{1, \frac{\pi\left(\theta^{\prime}, m^{\prime} \mid y\right) \rho_{m^{\prime}, m}}{\pi(\theta, m \mid y) \rho_{m, m^{\prime}} g_{m, m^{\prime}}(u)} J_\psi(\theta, u)\right\}
+$$
+
+(b) If $\left|m^{\prime}\right|=|m|-1$ (decrease dimension) set
+
+$$
+\alpha\left(\theta^{\prime}, m^{\prime} \mid \theta, m\right)=\min \left\{1, \frac{\pi\left(\theta^{\prime}, m^{\prime} \mid y\right) \rho_{m^{\prime}, m} g_{m^{\prime}, m}\left(u^{\prime}\right)}{\pi(\theta, m \mid y) \rho_{m, m^{\prime}}} J_\psi(\theta, \emptyset)\right\}
+$$
+
+\begin{enumerate}
+  \setcounter{enumi}{2}
+  \item With probability $\alpha\left(\theta^{\prime}, m^{\prime} \mid \theta, m\right)$ set $X_{t+1}=\left(\theta^{\prime}, m^{\prime}\right)$ and otherwise set $X_{t+1}=(\theta, m)$.
+\end{enumerate}
+
+This update satisfies detailed balance in Equation 7.11 below with respect to $\pi(\theta, m \mid y)$ between the pair of transition kernels associated with the addition and deletion proposal kernels.
+
+\subsection*{Step-by-Step}
+
+\subsubsection*{Step 1: Sample a New Model}
+\begin{itemize}
+  \item \textbf{Sample \( m' \) from \( p_{m,m'} \)}: A new model \( m' \) is proposed from a distribution that depends on the current model \( m \). This proposal mechanism dictates how the model space is explored.
+\end{itemize}
+
+\subsubsection*{Step 2: Propose New Parameters}
+\begin{itemize}
+  \item \textbf{Map to New Parameters \( (\theta', u') = \psi(\theta, u) \)}: A mapping \( \psi \) is used to propose new parameters \( \theta' \) and auxiliary variables \( u' \), starting from the current parameters \( \theta \) and a random draw \( u \) from a distribution \( g_{m,m'} \). This mapping is designed to ensure dimension matching between models of different complexity, which is critical when moving between models with a different number of parameters.
+
+  \begin{itemize}
+    \item \textbf{(a) Increase Dimension}: If the new model has more parameters (\( |m'| = |m| + 1 \)):
+    \begin{itemize}
+      \item \textbf{Acceptance Ratio \( \alpha(\theta', m'|\theta, m) \)}: The acceptance probability for the new parameters and model is calculated. It's the minimum of 1 and the ratio of the target distributions for the new and old parameters, times the ratio of the proposal probabilities for the reverse and forward moves, adjusted by a Jacobian determinant \( J_{\psi}(\theta, u) \). This determinant accounts for the change in volume in the parameter space due to the mapping \( \psi \).
+    \end{itemize}
+  \end{itemize}
+\end{itemize}
+
+The acceptance probability for increasing the dimension is given by:
+
+\[ \alpha(\theta', m'|\theta, m) = \min \left\{ 1, \frac{\pi(\theta', m'|y)p_{m',m}}{\pi(\theta, m|y)p_{m,m'}g_{m,m'}(u')}J_\psi(\theta, u) \right\} \]
+
+Breaking this down:
+
+\begin{enumerate}
+  \item \( \pi(\theta', m'|y) \): This is the posterior probability of the proposed parameters \( \theta' \) and model \( m' \), given the data \( y \). It represents how well the new model with the additional parameter explains the data compared to the current model.
+
+  \item \( p_{m',m} \): The probability of proposing the current model \( m \) from the proposed model \( m' \). It's part of the "reversibility" aspect of the algorithm, ensuring that you can move back to the original model with the correct probability.
+
+  \item \( \pi(\theta, m|y) \): The posterior probability of the current parameters \( \theta \) and model \( m \), given the data \( y \).
+
+  \item \( p_{m,m'} \): The probability of proposing the new model \( m' \) from the current model \( m \).
+
+  \item \( g_{m,m'}(u') \): The density of the auxiliary variable \( u' \) used in the mapping from \( \theta \) to \( \theta' \). This helps in matching the dimensions when moving to a model with more parameters.
+
+  \item \( J_\psi(\theta, u) \): The Jacobian of the transformation \( \psi \) used to map between the parameter spaces of the models. It accounts for the change in volume in the parameter space due to the mapping, which is necessary for maintaining the correct probability density.
+
+\end{enumerate}
+
+\begin{itemize}
+  \item \textbf{(b) Decrease Dimension}: If the new model has fewer parameters (\( |m'| = |m| - 1 \)):
+  \begin{itemize}
+    \item \textbf{Acceptance Ratio \( \alpha(\theta', m'|\theta, m) \)}: Similarly, this is the minimum of 1 and a ratio that now includes the Jacobian determinant \( J_{\psi}(\theta, \phi) \) for the decrease in dimension. The determinants ensure that the move is reversible and that the probabilities of moving between models are correctly balanced.
+  \end{itemize}
+\end{itemize}
+
+The acceptance probability for decreasing the dimension is given by:
+
+\[ \alpha(\theta', m'|\theta, m) = \min \left\{ 1, \frac{\pi(\theta', m'|y)p_{m',m}g_{m',m}(u')}{\pi(\theta, m|y)p_{m,m'}}J_\psi(\theta, \phi) \right\} \]
+
+Breaking this down:
+
+\begin{enumerate}
+  \item \( \pi(\theta', m'|y) \): The posterior probability of the proposed parameters \( \theta' \) and model \( m' \), given the data \( y \).
+
+  \item \( p_{m',m} \): The probability of proposing the current model \( m \) from the proposed model \( m' \).
+
+  \item \( g_{m',m}(u') \): The density of the auxiliary variable \( u' \), but now for the reverse transformation, since we're moving to a model with fewer parameters.
+
+  \item \( \pi(\theta, m|y) \): The posterior probability of the current parameters \( \theta \) and model \( m \), given the data \( y \).
+
+  \item \( p_{m,m'} \): The probability of proposing the new model \( m' \) from the current model \( m \).
+
+  \item \( J_\psi(\theta, \phi) \): The Jacobian of the transformation for the decrease in dimension, also accounting for the volume change in the parameter space.
+
+\end{enumerate}
+
+\subsubsection*{Step 3: Accept or Reject the New State}
+\begin{itemize}
+  \item The new parameters and model \( (\theta', m') \) are accepted with the calculated probability. If not accepted, the algorithm remains at the current state \( (\theta, m) \).
+\end{itemize}
+
+\subsection*{Intuitive Explanation}
+The RJ-MCMC algorithm allows for Bayesian inference in models where the number of parameters can change. It's like having a party where guests (parameters) can either join the party (increasing dimension) or leave (decreasing dimension). To decide if a new guest can join, we look at how well they fit with the current guests (model fit) and how likely we were to invite them in the first place (prior probability). For a guest to leave, we also consider how the party would change without them.
+
+The algorithm has to be fair, so it uses a sort of "guest list adjustment" (Jacobian determinant) to make sure the probability of a guest joining or leaving is balanced with the probability of them doing the opposite at a later time. This ensures that over time, we get a fair representation of who likes to come to the party (which model parameters are important) without bias towards guests who always want to party (overfitting to a particular model).
+
+\section*{RJMCMC Example}
+Absolutely, I'm here to help you create an overview of the Reversible Jump Markov Chain Monte Carlo (RJ-MCMC) algorithm as it's applied to a mixture model. Let's begin by discussing the setup as described in the screenshot you've provided.
+
+\subsection*{Overview of the Mixture Model Setup}
+The text outlines a scenario where we have galaxy radial velocity data that we wish to model using a mixture of normal distributions. This type of model is appropriate when we suspect that the data is generated from several different underlying processes or classes, each of which can be modeled with a normal distribution.
+
+\subsubsection*{Observation Model}
+\begin{itemize}
+  \item The data points \( y_i \) are considered to be independent samples from a mixture model.
+  \item Each component of the mixture is a normal distribution \( N(\mu_j, \sigma_j^2) \).
+  \item The mixture model is defined by:
+  \begin{itemize}
+    \item \( m \): The number of mixture components, which is not known in advance.
+    \item \( \mu = (\mu_1, ..., \mu_m) \): The means of the mixture components.
+    \item \( \sigma = (\sigma_1, ..., \sigma_m) \): The standard deviations of the mixture components.
+    \item \( w = (w_1, ..., w_m) \): The weights of the mixture components, with the constraint that all weights are positive and sum up to 1.
+  \end{itemize}
+\end{itemize}
+
+The likelihood of observing the data given the model parameters is expressed as the product of the weighted sum of the normal distributions:
+
+\[ p(y|\mu, \sigma, w, m) = \prod_{i=1}^{n} \left[ \sum_{j=1}^{m} w_j N(y_i; \mu_j, \sigma_j^2) \right] \]
+
+\subsubsection*{Model Parameters and Index}
+\begin{itemize}
+  \item The model parameters are collectively denoted by \( \theta \), which includes all the \( \mu_j \), \( \sigma_j \), and \( w_j \) for each component \( j \).
+  \item The index \( m \) just denotes the number of components and is a positive integer.
+  \item Unlike other models where the order of parameters is significant, for this mixture model, any permutation of the mixture components gives the same likelihood, so the order is not important.
+\end{itemize}
+
+This setup is the foundation for applying RJ-MCMC to estimate the posterior distribution of the model parameters, including the number of components \( m \), which is unknown. RJ-MCMC will allow us to jump between models with different numbers of components (different \( m \)) and thus select the most appropriate model complexity based on the observed data.
+
+The provided text describes the steps of the Reversible Jump MCMC (RJ-MCMC) algorithm applied to a normal mixture model. The objective is to sample from the posterior distribution of a mixture of normal distributions when the number of components in the mixture is unknown. Here's an explanation of the algorithm steps outlined in the screenshot:
+
+\subsection*{Step 1: Choose an Update}
+A move is selected uniformly at random from five possible moves (in this context, only the "add a component" move is detailed). The probability of choosing any move is \(1/5\).
+
+\subsection*{Step 2 (up): Add a Component}
+This step increases the dimensionality of the state by adding a new component to the mixture model, effectively increasing \(m\) by 1.
+
+\begin{itemize}
+  \item \textbf{Generate \( \theta_{m+1} \)}: New parameters for the added component are generated. This includes a new mean \( \mu_{m+1} \), a new standard deviation \( \sigma_{m+1} \), and a new weight \( w_{m+1} \). The new parameter set \( \theta' \) now includes this additional component.
+
+  \item \textbf{Simulate \( \mu_{m+1}', \sigma_{m+1}' \)}: A new mean and standard deviation are drawn from a prior distribution, which in this case is a Normal-Gamma distribution.
+
+  \item \textbf{Choose a weight \( j \) to split and simulate \( w_{m+1} \)}: One of the existing weights is selected to be split into two weights to maintain the property that the sum of weights equals 1. A new weight \( w_{m+1} \) is simulated from a Uniform distribution.
+
+  \item \textbf{Adjust the weights}: The chosen weight \( w_j \) is reduced by \( w_{m+1} \), and the other weights remain the same.
+
+\end{itemize}
+
+\subsection*{Step 2 (up) Probability of Proposal}
+The probability of proposing the move from \( m \) to \( m' \) is given by \( p_{m,m'} \times q_{\mu,\sigma} \times \frac{1}{m} \times \frac{1}{w_j} \), where:
+
+\begin{itemize}
+  \item \( p_{m,m'} = 1/5 \) is the probability of selecting this move.
+  \item \( q_{\mu,\sigma} \) is the density of the proposed new mean and standard deviation.
+  \item \( \frac{1}{m} \) comes from the choice of the weight to split (since any of the \( m \) weights could have been chosen).
+  \item \( \frac{1}{w_j} \) is due to the normalization of the newly simulated weight \( w_{m+1} \) to maintain the sum of weights as 1.
+\end{itemize}
+
+\subsection*{Step 3 (up)}
+This step is about deciding whether to accept the proposed addition of a new component to the mixture model, which increases the model's complexity. The decision is made based on the acceptance probability \( \alpha^+ \), which is calculated as follows:
+
+\[ \alpha^+ = \min \left\{ 1, \frac{\pi(\mu', \sigma', w'|y)p_{m',m}m}{\pi(\mu, \sigma, w|y)p_{m,m'}(m+1)q_{\mu,\sigma}(\mu_{m+1}', \sigma_{m+1}')}\times \frac{1}{m} \times \frac{1}{w_j} \right\} \]
+
+Breaking down the components of \( \alpha^+ \):
+
+\begin{enumerate}
+  \item \( \pi(\mu', \sigma', w'|y) \): This is the posterior density of the new parameter set given the data, which includes the added component's parameters.
+
+  \item \( p_{m',m} \): The probability of proposing a move from the proposed model with \( m' \) components back to the current model with \( m \) components. Since we're "going up" or adding a component, \( m' = m + 1 \), and the reverse move probability \( p_{m',m} \) would correspond to a "down" or deletion move, which might be \( 1/5 \) if all moves are equally likely.
+
+  \item \( \pi(\mu, \sigma, w|y) \): The posterior density of the current parameter set given the data.
+
+  \item \( p_{m,m'} \): The probability of proposing the current move, which in this case is the "up" or addition move, also likely \( 1/5 \) if all moves are equally probable.
+
+  \item \( q_{\mu,\sigma}(\mu_{m+1}', \sigma_{m+1}') \): The proposal density for the new component's mean and standard deviation, which were proposed in the previous steps.
+
+  \item \( m \) and \( (m+1) \): These terms adjust the probability for the change in the number of components. When adding a component, we multiply by \( m \) and when going back (theoretically, if this were a reverse move), we multiply by \( (m+1) \).
+
+  \item \( \frac{1}{m} \): This term appears because, in the proposal, one of the \( m \) existing weights is chosen to be split.
+
+  \item \( \frac{1}{w_j} \): This term accounts for the fact that when a weight is chosen to be split, it's done so uniformly at random from \( U(0, w_j) \), and hence the density is \( \frac{1}{w_j} \).
+
+\end{enumerate}
+
+The acceptance probability \( \alpha^+ \) ensures that the chain satisfies detailed balance, which is necessary for the Markov chain to converge to the correct target distribution. The minimum function is there to ensure that the acceptance probability is a valid probability that does not exceed 1. If \( \alpha^+ \) is less than 1, it's possible for the proposed move to not be accepted, ensuring that the algorithm explores the parameter space adequately and adheres to the posterior distribution.
+
+The screenshots describe the process of the "delete a component" move in the Reversible Jump MCMC algorithm for a normal mixture model, which reduces the dimensionality of the parameter space. Let's break down the steps and the acceptance probability \( \alpha^- \).
+
+\subsection*{Step 2 (down): Delete a Component}
+
+\subsubsection*{Set \( m' \):}
+\begin{itemize}
+  \item Decrease the number of mixture components by one, setting \( m' = m - 1 \). If \( m' = 0 \), the move is rejected outright because a model must have at least one component.
+\end{itemize}
+
+\subsubsection*{Simulate \( i \):}
+\begin{itemize}
+  \item Choose an index \( i \) uniformly at random from \( \{1, 2, ..., m\} \). This index corresponds to the component to be removed from the mixture.
+\end{itemize}
+
+\subsubsection*{Simulate \( j \) and Adjust Weights:}
+\begin{itemize}
+  \item Choose an index \( j \) uniformly at random from the remaining indices to determine which component's weight will absorb the weight of the removed component.
+  \item Update the weights: The weight \( w_i \) of the removed component is added to the weight \( w_j \) of the absorbing component, and \( w_i \) is then discarded.
+\end{itemize}
+
+\subsection*{Probability of Proposal for Deleting a Component}
+The probability of proposing the move from \( m \) to \( m' \) is \( p_{m,m'} \), which is the uniform probability of selecting this move (e.g., if there are five possible moves, it would be \( 1/5 \)), multiplied by the probability of selecting the specific components \( i \) and \( j \) to delete and to absorb the weight, respectively.
+
+\subsection*{Step 3 (down): Accept the Proposal}
+
+\subsubsection*{Calculate \( \alpha^- \):}
+\begin{itemize}
+  \item The acceptance probability for deleting a component is given by:
+\end{itemize}
+
+\[ \alpha^- = \min \left\{ 1, \frac{\pi(\mu', \sigma', w'|y)mq_{\mu,\sigma}(\mu_i, \sigma_i)}{\pi(\mu, \sigma, w|y)(w_i + w_j)} \right\} \]
+
+Breaking down \( \alpha^- \):
+
+\begin{enumerate}
+  \item \( \pi(\mu', \sigma', w'|y) \): The posterior density of the new (smaller) parameter set given the data.
+
+  \item \( m \): The number of components in the original model before the deletion.
+
+  \item \( q_{\mu,\sigma}(\mu_i, \sigma_i) \): The proposal density for the component that was removed. This is part of the reverse move probability, i.e., how likely it would be to add back the component that we are now deleting.
+
+  \item \( \pi(\mu, \sigma, w|y) \): The posterior density of the current parameter set given the data.
+
+  \item \( w_i + w_j \): The combined weight of the deleted component and the component that absorbs its weight.
+
+  \item The \( \min \) function ensures that the acceptance probability does not exceed 1.
+
+\end{enumerate}
+
+This acceptance probability reflects the detailed balance condition of the Markov chain. The move is accepted with probability \( \alpha^- \), and if accepted, the state of the Markov chain is updated to \( (\mu', \sigma', w', m') \); otherwise, it remains at the current state \( (\mu, \sigma, w, m) \).
+
+
+\end{document}

@@ -108,7 +108,12 @@ Let's consider a step by step example based on the second screenshot provided:
    - Update the estimate covariance: \( \Sigma_{t|t} = (I - K_tH_t)\Sigma_{t|t-1} \)
 
 In this process, \( \nu_t \) is the residual or innovation, which is the difference between the actual observation and the predicted observation. \( S_t \) is a term that comes from the innovation covariance, representing the uncertainty of the observation. This step-by-step process is repeated at each time step, refining the 
-
+\begin{figure}
+    \centering
+    \includegraphics[width=1\linewidth]{overviews/HMM/figures/Filter visuals.png}
+    \caption{Figure from \cite{welch_introduction_nodate} }
+    \label{fig:enter-label}
+\end{figure}
 
 \subsection{The Kalman Smoother}
 
@@ -148,4 +153,13 @@ Where \( J_t \) is the smoother gain, calculated as:
 Applying this process to the given example would involve first using the Kalman filter equations to obtain \(\mu_{t|t}\) and \(\Sigma_{t|t}\) for all \(t\), and then working backwards from \(T\) to 1 using the smoother equations to refine these estimates. The result is a set of smoothed estimates that are more accurate than the filtered estimates, as they incorporate information from the entire observation sequence.
 
 
+\section{Further Literature}
+I highly recommend reading the following two intros to the Kalman filter:
+\begin{itemize}
+    \item \cite{lacey_tutorial_nodate}
+    \item \cite{welch_introduction_nodate}
+\end{itemize}
 
+
+\printbibliography
+\end{document}
