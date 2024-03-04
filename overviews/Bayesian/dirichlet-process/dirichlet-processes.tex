@@ -1,0 +1,315 @@
+\documentclass[10pt]{article}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage[version=4]{mhchem}
+\usepackage{stmaryrd}
+
+\title{Dirichlet Overview}
+
+\author{}
+\date{}
+
+
+\begin{document}
+\maketitle
+
+\section*{Definition Dirichlet Distribution}
+\begin{itemize}
+  \item The Dirichlet distribution is a family of continuous multivariate probability distributions parameterized by a vector \( \alpha \) of positive reals.
+  \item It is the multivariate generalization of the beta distribution.
+\end{itemize}
+
+
+
+\subsection*{Density Function:}
+Notation:
+
+\begin{itemize}
+  \item \( w = (w_1, ..., w_M) \) represents a sample from the Dirichlet distribution.
+  \item \( w \) is constrained such that \( w_i \in (0, 1) \) for each \( i \) and \( \sum_{k=1}^M w_k = 1 \).
+\end{itemize}
+
+\begin{itemize}
+  \item The probability density function for \( w \) given a parameter vector \( \alpha = (\alpha_1, ..., \alpha_M) \) is:
+\end{itemize}
+
+\[ \pi(w_1, ..., w_M) = \frac{\Gamma(\sum_{k=1}^M \alpha_k)}{\prod_{k=1}^M \Gamma(\alpha_k)} w_1^{\alpha_1 - 1} ... w_M^{\alpha_M - 1} \]
+
+\subsection*{Agglomerative Property:}
+\begin{itemize}
+  \item If \( w \sim \text{Dirichlet}(\alpha_1, ..., \alpha_M) \), then \( (w_1 + w_2, w_3, ..., w_M) \sim \text{Dirichlet}(\alpha_1 + \alpha_2, \alpha_3, ..., \alpha_M) \).
+  \item This property allows for the merging of categories in a multinomial distribution.
+\end{itemize}
+
+\subsection*{Conjugacy to Multinomial Distribution:}
+\begin{itemize}
+  \item The Dirichlet distribution serves as a conjugate prior for the multinomial distribution.
+  \item If \( (n_1, ..., n_M) \sim \text{Multinom}(n, w) \) and \( w \sim \text{Dirichlet}(\alpha_1, ..., \alpha_M) \), then the posterior for \( w \) is:
+\end{itemize}
+
+\[ w | n_1, ..., n_M \sim \text{Dirichlet}(\alpha_1 + n_1, ..., \alpha_M + n_M) \]
+
+\subsection*{Usage:}
+\begin{itemize}
+  \item The Dirichlet distribution is commonly used in Bayesian statistics, natural language processing (topic modeling), and machine learning where it acts as a prior for the multinomial or categorical distributions.
+\end{itemize}
+
+\subsection*{Key Points}
+\begin{itemize}
+  \item \textbf{Parameters \( \alpha \):} Control the shape of the distribution. Higher values lead to more uniform distributions, while lower values concentrate the distribution around fewer elements.
+  \item \textbf{Expectation:} Each \( w_i \) has an expected value of \( \frac{\alpha_i}{\sum_{k=1}^M \alpha_k} \).
+  \item \textbf{Variance:} Inversely related to the sum of the \( \alpha \) parameters; less concentration parameter \( \alpha \) leads to higher variance and more pronounced differences among the \( w_i \).
+\end{itemize}
+
+
+\section*{Multinomial Dirichlet Process Overview}
+\subsection*{Purpose:}
+
+\begin{itemize}
+  \item To define a random probability distribution \( G \) over a parameter space \( \Omega \).
+\end{itemize}
+
+\subsection*{Construction:}
+
+\begin{itemize}
+  \item Constructed using a base distribution \( H \) on \( \Omega \) with density \( h \).
+  \item \( H \) should be simple but is otherwise general.
+\end{itemize}
+
+\subsection*{Definition:}
+
+\begin{itemize}
+  \item The Multinomial Dirichlet Process \( G_M \sim \Pi_M(\alpha, H) \) is defined by the following steps:
+  \begin{enumerate}
+    \item Sample \( \theta_k^* \sim H \) for \( k = 1, ..., M \).
+    \item Sample weights \( w_1, ..., w_M \sim \text{Dirichlet}(\alpha/M) \).
+    \item Define the distribution \( G_M \) as \( dG_M(\theta) = \sum_{k=1}^M w_k \delta_{\theta_k^*}(d\theta) \), where \( \delta \) is the Dirac delta function centered at \( \theta_k^* \).
+  \end{enumerate}
+\end{itemize}
+
+\subsection*{Process:}
+
+\begin{itemize}
+  \item \textbf{Step 1:} Draws \( M \) random parameters \( \theta_k^* \) from the base distribution \( H \), which represents different possible outcomes or categories in \( \Omega \).
+  \item \textbf{Step 2:} Assigns weights to these parameters using a Dirichlet distribution with a concentration parameter \( \alpha \) divided by the number of categories \( M \). This determines the probability of each outcome.
+  \item \textbf{Step 3:} Constructs a new probability distribution by mixing the Dirac delta functions centered at each \( \theta_k^* \) with the corresponding weights \( w_k \).
+\end{itemize}
+
+\subsection*{Key Points:}
+
+\begin{itemize}
+  \item The process drops \( M \) random probability masses \( w_k \) at the locations \( \theta_k^* \) in \( \Omega \).
+  \item The resultant \( G_M \) is a discrete distribution that places mass on the sampled points \( \theta_k^* \) according to the weights \( w_k \).
+\end{itemize}
+
+\subsection*{Usage:}
+
+\begin{itemize}
+  \item The Multinomial Dirichlet Process is useful for modeling distributions over discrete sets where the exact number of categories is unknown or potentially infinite.
+  \item It is often used in Bayesian nonparametric methods, such as clustering and density estimation.
+\end{itemize}
+
+\subsection*{Implications}
+\begin{itemize}
+  \item \textbf{Flexibility:} Allows for a flexible number of components \( M \) that can adapt based on the data.
+  \item \textbf{Concentration Parameter \( \alpha \):} Controls how "spread out" or "concentrated" the weights are among the components. Smaller \( \alpha \) leads to a few weights being much larger (more concentrated), while larger \( \alpha \) tends to spread the weights more evenly.
+  \item \textbf{Base Distribution \( H \):} Provides the "average" or expected distribution from which the Dirichlet process samples.
+\end{itemize}
+
+
+
+\subsection*{Deep Dive Concentration Parameter \( \alpha \)}
+The parameter \( \alpha \) affects the concentration of the Dirichlet process. When \( \alpha \) is small, the generated weights \( w \) under the Dirichlet distribution are more likely to be close to zero, with a few weights being much larger than the others. This results in a distribution \( G_M \) that is more "spiky" or concentrated around a few points, making it more centered around the base distribution \( H \).
+
+Mathematically, the weights \( w_k \) are drawn from a Dirichlet distribution with parameters \( (\alpha/M, \ldots, \alpha/M) \). The expected value of each weight under the Dirichlet distribution is \( \mathrm{E}(w_k) = \frac{\alpha/M}{\sum_{j} \alpha_j/M} = \frac{\alpha}{\alpha} = 1/M \). However, the variance of each weight, which indicates how much the values are spread out, is inversely proportional to \( \alpha \) (and \( M \)), and is given by the formula:
+
+\[ \text{var}(w_k) = \frac{\frac{\alpha/M}{M}(1 - \frac{\alpha/M}{M})}{\alpha + 1} \]
+
+When using a symmetric Dirichlet distribution as the prior in a Dirichlet process, where each \( \alpha_i = \alpha/M \), the formulas simplify to:
+
+\[ \mathrm{E}[w_i] = \frac{1}{M} \]
+
+\[ \mathrm{Var}[w_i] = \frac{\frac{\alpha}{M} (1 - \frac{\alpha}{M})}{\alpha + 1} = \frac{\alpha (M - 1)}{M^2 (\alpha + 1)} \]
+
+Now, let's consider what happens as \( \alpha \) gets smaller:
+
+\begin{enumerate}
+  \item \textbf{Expected Value}: The expected value remains \( \frac{1}{M} \) regardless of \( \alpha \), meaning that if we were to average many samples from the Dirichlet distribution, each component would average out to \( \frac{1}{M} \).
+
+  \item \textbf{Variance}: As \( \alpha \) decreases, the variance of each component increases. However, because the total probability must sum to 1, an increase in variance means that the probability mass can swing more unevenly among the components. A smaller \( \alpha \) causes more extreme differences between the weights; some weights will be much larger than the expected \( \frac{1}{M} \), and others much smaller, especially since the variance of each component is inversely proportional to \( \alpha \).
+
+\end{enumerate}
+
+This behavior can be understood as follows: With a large \( \alpha \), the distribution becomes more uniform because the increased denominator in the variance formula reduces the variance, making it less likely for any single weight to deviate far from \( \frac{1}{M} \). Conversely, with a small \( \alpha \), the variance is larger, and it is more likely that the Dirichlet process will produce some weights that are significantly larger than the expected value, with the rest being much smaller to ensure that the weights sum to 1.
+
+The result is that for small \( \alpha \), a few \( w_i \) will dominate (these are the large weights), and most of the \( w_i \) will be very small, leading to a distribution of samples that is concentrated around a few components rather than being spread out uniformly across all components.
+
+The "centered" nature for small values of \( \alpha \) means that there is a higher probability that a few of the \( w_k \) values will be significantly larger than the others, thus the samples from the Dirichlet process will be more concentrated around fewer of the \( \theta_k^* \) values, which are drawn from the base distribution \( H \).
+
+The proposition you're referring to is about the predictive distribution of a Dirichlet Process (DP). The Dirichlet Process is a stochastic process used in Bayesian nonparametric models, often for clustering or as a prior over infinite-dimensional probability distributions.
+
+Here's a bit more intuition and context around the proposition:
+
+\section*{Predictive Distribution of the Dirichlet Process}
+For $j=0, \ldots, n-1$ we have $d \pi\left(\theta_{j+1} \mid \theta_{1: j}\right)=\tilde{H}_j\left(d \theta_{j+1}\right)$ where
+
+$$
+\tilde{H}_j\left(d \theta_{j+1}\right)=\frac{\alpha H\left(d \theta_{j+1}\right)+\sum_{i=1}^j \delta_{\theta_i}\left(d \theta_{j+1}\right)}{\alpha+j} .
+$$
+
+\subsubsection*{Definition:}
+\begin{itemize}
+  \item The predictive distribution is the distribution of a future observation given past observations.
+  \item In the context of the Dirichlet Process, it's the distribution from which we draw the next \( \theta_{j+1} \) given the previous \( j \) observations \( \theta_1, \theta_2, ..., \theta_j \).
+\end{itemize}
+
+\subsubsection*{Formula Intuition:}
+\begin{itemize}
+  \item \( \tilde{H}_j(d\theta_{j+1}) \) is the predictive distribution after observing \( j \) samples.
+  \item It is a mixture of:
+  \begin{itemize}
+    \item The base distribution \( H \), which can be thought of as the "prior" belief about where new samples should come from.
+    \item The empirical distribution formed by the previous observations \( \theta_1, \theta_2, ..., \theta_j \), represented by Dirac delta functions \( \delta \) at each observed value.
+  \end{itemize}
+\end{itemize}
+
+\subsubsection*{Components:}
+\begin{itemize}
+  \item The weight \( \frac{\alpha}{\alpha + j} \) on the base distribution \( H \) indicates how much "pull" the prior has on the next observation. It's a function of the concentration parameter \( \alpha \) and the number of previous observations \( j \).
+  \item The weight \( \frac{1}{\alpha + j} \) on each previous observation indicates how much those observed values influence the next observation. There are \( j \) such terms, each for one of the past observations.
+\end{itemize}
+
+\subsubsection*{Predictive Process:}
+\begin{itemize}
+  \item As more observations are collected (i.e., as \( j \) increases), the influence of the base distribution \( H \) diminishes, and the empirical data have more "say" in the predictive distribution.
+  \item If \( \alpha \) is large, the base distribution remains influential even with many observations. If \( \alpha \) is small, even a few observations can significantly shift the predictive distribution towards the empirical data.
+\end{itemize}
+
+\subsubsection*{Predictive Distribution Dynamics:}
+\begin{itemize}
+  \item New samples are likely to be close to previous samples due to the empirical component, which is the essence of clustering in Dirichlet Process models.
+  \item New clusters can still be formed due to the influence of the base distribution \( H \), especially if \( \alpha \) is not too small.
+\end{itemize}
+
+Proposition 8.19 describes the posterior distribution of a Dirichlet Process (DP) after observing a finite number of samples. Here's a concise explanation:
+
+\section*{Posterior of a Dirichlet Process}
+If $\theta_1, \ldots, \theta_n \sim G$ with $G \sim \Pi(\alpha, H)$ then
+
+$$
+G \mid \theta_{1: n} \sim \Pi\left(\tilde{\alpha}_n, \tilde{H}_n\right)
+$$
+
+with $\tilde{\alpha}_n=\alpha+n$ and
+
+$$
+\tilde{H}_n=\frac{\alpha H+\sum_{i=1}^n \delta_{\theta_i}}{\alpha+n} .
+$$
+
+\subsubsection*{Context:}
+\begin{itemize}
+  \item Given \( \theta_1, ..., \theta_n \) are samples from a DP with base distribution \( H \) and concentration parameter \( \alpha \).
+\end{itemize}
+
+\subsubsection*{Posterior Distribution:}
+\begin{itemize}
+  \item The distribution of the DP given the observed samples is also a Dirichlet Process, denoted as \( G|\theta_{1:n} \).
+\end{itemize}
+
+\subsubsection*{Updated Parameters:}
+\begin{itemize}
+  \item The concentration parameter is updated to \( \alpha_n = \alpha + n \), reflecting the additional information from the \( n \) observations.
+  \item The updated base distribution \( \tilde{H}_n \) is a weighted average of the original base distribution \( H \) and the empirical distribution of the observed samples \( \delta_{\theta_i} \).
+\end{itemize}
+
+\subsubsection*{Formula:}
+\begin{itemize}
+  \item \( \tilde{H}_n = \frac{\alpha H + \sum_{i=1}^n \delta_{\theta_i}}{\alpha + n} \).
+\end{itemize}
+
+\subsubsection*{Implications:}
+\begin{itemize}
+  \item The posterior distribution \( G|\theta_{1:n} \) is influenced by both the prior distribution \( H \) and the observed data.
+  \item As more data are observed, the posterior increasingly reflects the empirical distribution of the data, while still retaining some influence from the prior distribution.
+\end{itemize}
+
+Certainly, let's delve into a more detailed explanation of each proposition regarding the Dirichlet Process (DP).
+
+\section*{Conditional Distribution}
+Step from $d \pi\left(\theta_1\right)$ to $d \pi\left(\theta_2 \mid \theta_1\right)$ )
+
+Suppose $G \sim \Pi(\alpha, H)$ and $\theta_1 \sim G$. The conditional distribution of $G \mid \theta_1$ is
+
+$$
+G \left\lvert\, \theta_1 \sim D P\left(\alpha+1, \frac{\alpha H+\delta_{\theta_1}}{\alpha+1}\right) .\right.
+$$
+
+Furthermore,
+
+$$
+d \pi\left(\theta_2 \mid \theta_1\right)=\frac{\alpha H\left(d \theta_2\right)+\delta_{\theta_1}\left(d \theta_2\right)}{\alpha+1}
+$$
+
+\subsubsection*{Objective:}
+To describe the behavior of the Dirichlet Process after observing an initial parameter \( \theta_1 \) from \( G \), where \( G \) is distributed according to a DP with concentration parameter \( \alpha \) and base distribution \( H \).
+
+\subsubsection*{Conditioning on Observations:}
+\begin{itemize}
+  \item After observing \( \theta_1 \), the updated distribution of \( G \) (denoted as \( G|\theta_1 \)) is still a Dirichlet Process, but with updated parameters \( \alpha_n = \alpha + 1 \) and a modified base distribution \( \tilde{H}_n \).
+\end{itemize}
+
+\subsubsection*{Modified Base Distribution:}
+\begin{itemize}
+  \item The new base distribution \( \tilde{H}_n \) is a blend of the original \( H \) and the observed value \( \theta_1 \), with weights reflecting the relative contributions of the prior and the empirical data:
+  \begin{itemize}
+    \item The original base distribution \( H \) is weighted by \( \frac{\alpha}{\alpha + 1} \), maintaining its influence on future draws.
+    \item The observed value \( \theta_1 \) is represented by a Dirac delta function \( \delta_{\theta_1} \) and is weighted by \( \frac{1}{\alpha + 1} \), directly incorporating the empirical observation into the process.
+  \end{itemize}
+\end{itemize}
+
+\subsubsection*{Predictive Process:}
+\begin{itemize}
+  \item The predictive distribution for the next observation \( \theta_2 \), given \( \theta_1 \), is now influenced by both the prior \( H \) and the specific observation \( \theta_1 \).
+  \item This reflects the self-reinforcing nature of the DP where the probability of re-sampling an existing value increases with each observation of that value.
+\end{itemize}
+
+\section*{Marginal Generative Process}
+Consider the marginal generative process
+
+\begin{enumerate}
+  \item $\theta_1 \sim H$
+  \item for $j=1, \ldots, n-1$\\
+(a) With probability $\alpha /(\alpha+j)$ simulate $\theta_{j+1} \sim H$.\\
+(b) Otherwise simulate $\theta_{j+1} \sim U\left\{\theta_1, \ldots, \theta_j\right\}$.
+\end{enumerate}
+
+The distribution of $\theta=\left(\theta_1, \ldots, \theta_n\right)$ is unchanged from Definition 8.14. No $G$ in sight!
+
+\subsubsection*{Objective:}
+To outline a sequential sampling method for generating a set of parameters \( \theta_1, \theta_2, ..., \theta_n \) from a Dirichlet Process without referencing the full distribution \( G \).
+
+\subsubsection*{Procedure:}
+\begin{enumerate}
+  \item \textbf{Initial Sample}: Draw the first parameter \( \theta_1 \) from the base distribution \( H \), which represents the prior belief about the parameter space.
+  \item \textbf{Subsequent Samples}: For each subsequent parameter \( \theta_{j+1} \) where \( j \) ranges from 1 to \( n-1 \):
+  \begin{itemize}
+    \item Draw from \( H \) with a probability proportional to the concentration parameter \( \alpha \), specifically \( \frac{\alpha}{\alpha + j} \). This reflects the strength of the prior as more observations are collected.
+    \item With the complementary probability, choose \( \theta_{j+1} \) to be exactly one of the previously observed parameters \( \{\theta_1, ..., \theta_j\} \). This promotes clustering as the process favors previously observed values.
+  \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Intuition:}
+\begin{itemize}
+  \item This process exhibits the "rich get richer" property, where values that have been sampled previously are more likely to be sampled again.
+  \item The model allows for both the introduction of new unique values (drawn from \( H \)) and the repetition of existing values, with the balance controlled by \( \alpha \) and the number of previous observations.
+\end{itemize}
+
+\subsubsection*{Implications:}
+\begin{itemize}
+  \item This generative process demonstrates the clustering property of the DP, where observations can be grouped together with the probability of forming a new cluster decreasing as more observations are made.
+\end{itemize}
+
+\end{document}
