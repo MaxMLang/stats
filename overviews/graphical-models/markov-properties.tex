@@ -68,7 +68,30 @@ Intuitively, you can think of the nodes in set S as a kind of "wall" or "barrier
 
 For example, in a social network graph modeling friendships, if person S is the only mutual friend between person A and person B, then A's relationship with B can be completely explained by their relationships with S. If we know S's relationship status with both A and B, additional information about A does not change what we know about B, and vice versa, because all the information "flows" through S.
 
+\section*{Local Markov Property}
+\subsection{Definition (mathematical explanation):}\\
+A distribution obeys the local Markov property with respect to a graph \( G \) if for every vertex \( v \), the variable \( X_v \) is conditionally independent of all other variables given its neighbors, formally \( X_v \perp \!\!\! \perp X_{V\setminus\{bdg(v) \cup \{v\}\}} \mid X_{bdg(v)} \), where \( bdg(v) \) is the boundary or the set of neighbors of \( v \).
 
+\subsection{Intuition:}\\
+The local Markov property suggests that a node is conditionally independent of all other nodes in the graph, given that the node's immediate neighbors are known.
 
-\section{Directed Graphs}
+\textbf{Example:}\\
+In a graph with nodes A, B, C, where A is connected to B and B is connected to C, the local Markov property implies that knowing B gives us all the information about A that could be gleaned from C, and therefore A is conditionally independent of C given B.
+
+\section{Relation to One Another}
+\begin{itemize}
+  \item \textbf{Global implies local}: The global Markov property is a more general condition. If a distribution satisfies the global Markov property, it also satisfies the local Markov property because the neighbors of a node form a "separating set" for that node and the rest of the graph.
+
+  \item \textbf{Local implies pairwise}: The local Markov property, in turn, implies the pairwise property because if a node is conditionally independent of all other nodes given its neighbors, then certainly any pair of non-neighboring nodes are conditionally independent given the rest.
+
+\end{itemize}
+
+\textbf{Examples:}
+
+\begin{itemize}
+  \item \textbf{Local but not global}: Consider a graph forming a "V" shape with nodes A, B, and C, where A and C are not connected directly but both are connected to B. If there is a dependence between A and C that is not mediated by B, the graph may exhibit local Markov properties but not global Markov properties.
+
+  \item \textbf{Pairwise but not local}: Consider a triangle graph with nodes A, B, and C, where all nodes are connected. If we only consider pairwise relationships, we might find A independent of C given B, and B independent of C given A, satisfying the pairwise Markov property. However, we cannot say that a node is conditionally independent of all others given its neighbors, which would violate the local Markov property.
+
+\end{itemize}
 \end{document}
