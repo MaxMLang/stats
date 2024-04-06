@@ -1,0 +1,83 @@
+\documentclass{article}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+
+\title{Junction Tree Algorithm Execution}
+\author{}
+\date{}
+
+\begin{document}
+\maketitle
+
+\section*{Definition and Execution of Algorithm}
+The algorithm is defined as follows:
+
+\textbf{Collect and Distribute Steps of the Junction Tree Algorithm:}
+
+\begin{verbatim}
+function COLLECT(rooted tree T, potentials \(\psi\))
+    let \(1 < \dots < k\) be a topological ordering of T
+    for \(t\) in \(k, \dots, 2\) do
+        send message from \(\psi_t\) to \(\psi_{\sigma(t)}\);
+    end for
+    return updated potentials \(\psi_t\)
+end function
+
+function DISTRIBUTE(rooted tree T, potentials \(\psi\))
+    let \(1 < \dots < k\) be a topological ordering of T
+    for \(t\) in \(2, \dots, k\) do
+        send message from \(\psi_{\sigma(t)}\) to \(\psi_t\);
+    end for
+    return updated potentials \(\psi_t\)
+end function
+\end{verbatim}
+
+\subsection*{Execution of the Algorithm in a Three-Node Network}
+In a three-node network where node A is connected to node B, and node B is connected to node C, to compute the marginal probabilities given some evidence at node C, we use the collect and distribute steps of the junction tree algorithm. 
+
+\subsubsection*{Collect Phase (Upward Pass):}
+\begin{enumerate}
+    \item Node C, which has the evidence, sends a message to node B. This message encapsulates the information about the evidence at node C.
+    \item Node B now has information from node C. It aggregates its own information with that received from node C and sends a message to node A.
+\end{enumerate}
+
+After this phase, the root node (which could be node A) has complete information from all nodes in the network.
+
+\subsubsection*{Distribute Phase (Downward Pass):}
+\begin{enumerate}
+    \item Node A, having the complete information from the collect phase, sends a message to node B. This message contains the updated belief about node A’s state considering the entire network's information.
+    \item Node B receives the message from node A, combines it with its own information and the previously received message from node C, and then sends an updated message to node C.
+\end{enumerate}
+
+Now, each node has consistent information that reflects the evidence from node C and the dependencies throughout the network. Node A has the correct marginal probability that reflects the evidence at node C, and node C’s marginal is updated with the influence from node A through node B.
+
+By following the correct order, all local computations at each node are based on the most comprehensive and updated information from across the network, thereby maintaining consistency and achieving correct marginal probabilities.
+
+\section*{Why Order Matters}
+The uploaded image contains a snippet of an algorithm with handwritten notes for the "collect and distribute" steps of the junction tree algorithm. This algorithm is used in the domain of probabilistic graphical models and operates on a tree structure where nodes represent clusters of variables and edges represent conditional dependencies between these clusters.
+
+\subsection*{Why Order Matters:}
+\begin{itemize}
+    \item In the collect phase, messages are sent from the leaves of the tree up to the root, aggregating information from the individual parts of the network.
+    \item In the distribute phase, messages are sent from the root down to the leaves, distributing the aggregated information back down to individual variables.
+\end{itemize}
+
+The order is crucial because it ensures that the information propagated is globally consistent with all evidence observed in the network.
+
+\subsection*{Example Where Incorrect Order Fails:}
+Consider a simple three-node network with nodes A, B, and C. If we distribute before collecting:
+\begin{enumerate}
+    \item Node B sends a message to node A based only on its local information, not considering the evidence at node C.
+    \item Node C sends a message to node B. Now, node A has computed its information without this evidence.
+\end{enumerate}
+
+If we then collect:
+\begin{enumerate}
+    \item Node A sends its information, which is missing the evidence from C, back to node B.
+    \item Node B sends the combined information of A and B to node C. This message is flawed since A never considered the evidence at C.
+\end{enumerate}
+
+Consequently, node A has made a decision without considering the evidence at C, leading to a potential inconsistency in the network's beliefs. In contrast, by collecting first, the network remains consistent with the observed evidence.
+
+\end{document}
