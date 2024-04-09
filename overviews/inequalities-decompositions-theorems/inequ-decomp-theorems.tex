@@ -319,9 +319,54 @@ Using the dart analogy again, the SLLN would be like saying that if you could th
 \section{Hammersley–Clifford Theorem}
 
 \subsection{Statement}
-The Hammersley–Clifford Theorem is a foundational result in the field of graphical models and probability theory. It states that a probability distribution obeys the Markov properties with respect to an undirected graph if and only if it can be represented as a product of potential functions that are defined over the cliques of the graph. Mathematically, for a probability distribution \(P\) over a set of random variables \(X = \{X_1, X_2, \ldots, X_n\}\) and an undirected graph \(G\) with vertices corresponding to \(X\), the theorem asserts that \(P\) is Markov with respect to \(G\) if and only if there exists a representation of \(P\) as:
-\[ P(X) = \frac{1}{Z} \prod_{C \in \mathcal{C}(G)} \phi_C(X_C), \]
-where \(\mathcal{C}(G)\) denotes the set of cliques in \(G\), \(\phi_C\) are the potential functions associated with each clique \(C\), \(X_C\) are the variables in clique \(C\), and \(Z\) is a normalization constant ensuring that \(P\) sums to 1 over all possible values of \(X\).
+The Hammersley–Clifford Theorem is a foundational result in the field of graphical models and probability theory. It states that a probability distribution obeys the Markov properties with respect to an undirected graph if and only if it can be represented as a product of potential functions that are defined over the cliques of the graph. Mathematically,  for a probability distribution \( p \) over a set of random variables \( X_V \), where \( V \) is the set of all vertices in the decomposable graph \( G \), and the graph \( G \) has cliques \( C_1, \ldots, C_k \), the distribution \( p \) is Markov with respect to \( G \) if and only if it can be expressed as a product of functions \( \psi(x_{C_i} | x_{S_i}) \) over each clique \( C_i \) conditioned on the separator set \( S_i \), normalized by the marginal probabilities of the separator sets. Mathematically:
+
+\[ p(x_V) = \frac{1}{Z} \prod_{i=1}^{k} \psi(x_{C_i} | x_{S_i}), \]
+
+where \( \psi \) are potential functions associated with each clique \( C_i \) conditioned on the separator set \( S_i \), \( x_{C_i} \) and \( x_{S_i} \) are the variables in clique \( C_i \) and separator set \( S_i \) respectively, and \( Z \) is a normalization constant ensuring that \( p \) sums to 1 over all possible values of \( x_V \).
+
+The overall probability distribution \( p(x_V) \) is then the product of these conditioned clique potentials normalized by the marginals of the separators:
+
+\[ p(x_V) = \prod_{i=1}^{k} \frac{p(x_{C_i})}{p(x_{S_i})}. \]
+
+Here, the normalization constant \( Z \) is implicitly included by the division with the marginals of the separator sets \( p(x_{S_i}) \).
+
+\subsection{(More) Probabilistic Statement}
+\subsubsection{Joint Distribution}
+
+\begin{itemize}
+  \item \textbf{Joint Distribution}: This is a probability distribution that models two or more random variables simultaneously. For example, $\pi(x_1, x_2, \ldots, x_d)$ is a joint distribution for $d$ variables.
+  \item \textbf{Positivity Condition}: The theorem requires the joint distribution to be strictly positive on its support. This means that for every possible combination of values that the random variables can take, the probability is greater than zero.
+\end{itemize}
+
+\subsubsection{Conditional Distributions and Independence}
+
+\begin{itemize}
+  \item \textbf{Conditional Distribution}: $\pi(X_j \mid X_{-j})$ is the probability distribution of a variable $X_j$ given all other variables. It reflects how the probability of $X_j$ changes when the values of the other variables are known.
+  \item \textbf{Factorization}: The ability to represent the joint distribution as a product of conditional distributions simplifies complex dependencies into more manageable pairwise interactions.
+\end{itemize}
+
+\subsubsection*{Hammersley-Clifford Theorem and Independence Structure}
+
+\begin{itemize}
+  \item \textbf{Local Interactions}: In Markov random fields, the assumption is that each variable directly interacts only with its neighbors in the graph. These local interactions can describe the global distribution.
+  \item \textbf{Factorization According to the Graph}: The theorem says that if the graph is undirected and the positivity condition is met, the joint distribution of the entire system can be broken down into a product of factors, each involving only local neighbors.
+\end{itemize}
+
+\subsubsection{Implications}
+
+\begin{itemize}
+  \item \textbf{Simplification}: Instead of calculating a complex multidimensional joint distribution, one can work with simpler conditional distributions, which is computationally more feasible.
+  \item \textbf{Gibbs Sampling}: This is a technique used for sampling from a probability distribution. The theorem's factorization allows Gibbs sampling to update one variable at a time based on the conditional distributions, eventually converging to the joint distribution.
+  \item \textbf{Independence and Correlations}: Even though variables may be correlated, their complete joint behavior is captured by the conditions of other variables, reflecting that correlations can be understood through local conditional dependencies.
+\end{itemize}
+
+\subsubsection{Practical Example}
+
+Consider a social network where nodes are people and edges represent friendships. The joint distribution might represent the probability of a certain configuration of opinions within the network. The Hammersley-Clifford theorem suggests that to understand the distribution of opinions across the entire network, you only need to understand the conditional probabilities of each person's opinion given their friends' opinions, not the entire network's state. This reflects how people are influenced by their friends rather than by distant connections in the network.
+
+
+
 
 \subsection{Importance and Use Cases}
 This theorem is crucial for understanding the structure and factorization properties of probabilistic graphical models, such as Markov random fields (MRFs) and Bayesian networks. It provides a theoretical basis for the decomposition of complex joint distributions into simpler, local components, facilitating efficient computation of probabilities and inference. Applications include image processing, statistical physics, spatial statistics, and machine learning, where modeling complex dependencies between variables is essential.

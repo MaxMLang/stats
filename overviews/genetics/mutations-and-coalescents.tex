@@ -1,0 +1,50 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+
+\begin{document}
+\section{Mutation and Coalescence in infinitely-many-sites model}
+
+In general, \( P(k \text{ lineages}) \neq P(k \text{ lineages} | \text{mutation at } x) \) as general probabilities. However, under the assumptions of the coalescent theory with the infinitely many sites model, where mutations are modeled as a Poisson process, the probabilities can be considered equivalent for the purpose of calculating the distribution of mutations across lineages. This equivalence is based on the assumption that the \textbf{occurrence of a mutation does not affect the coalescent process and vice versa due to their rarity and independence}.
+
+Denote:
+\begin{itemize}
+    \item \( C_k \): Event that we have \( k \) lineages at a certain time.
+    \item \( M \): Event that a mutation occurs.
+    \item \( \theta \): Scaled mutation rate per lineage, per generation.
+
+\end{itemize}
+
+
+
+
+
+\subsection{Deriving \( P(k \text{ lineages}) \) as Equivalent to \( P(k \text{ lineages} | \text{mutation at } x) \):}
+
+By Bayes' Theorem, the probability of having \( k \) lineages given a mutation at \( x \) is:
+
+\[ P(C_k | M) = \frac{P(M | C_k) \cdot P(C_k)}{P(M)} \]
+
+The probability of mutation given \( k \) lineages, \( P(M | C_k) \), is proportional to \( k \) because mutations are independent and identically distributed across lineages:
+
+\[ P(M | C_k) = k \theta \delta t \]
+
+The probability of at least one mutation, \( P(M) \), across all possible lineage counts is the sum over all such probabilities:
+
+\[ P(M) = \sum_{j=1}^{n} P(M | C_j) \cdot P(C_j) \]
+\[ P(M) = \sum_{j=1}^{n} j \theta \delta t \cdot P(C_j) \]
+
+Substitute \( P(M | C_k) \) and \( P(M) \) back into Bayes' formula:
+
+\[ P(C_k | M) = \frac{k \theta \delta t \cdot P(C_k)}{\sum_{j=1}^{n} j \theta \delta t \cdot P(C_j)} \]
+
+Notice that \( \theta \delta t \) is a common factor and cancels out:
+
+\[ P(C_k | M) = \frac{k \cdot P(C_k)}{\sum_{j=1}^{n} j \cdot P(C_j)} \]
+
+Because the sum in the denominator \( \sum_{j=1}^{n} j \cdot P(C_j) \) is just a constant normalization factor (it sums to 1 when considering all possible lineage counts), we can simplify further to show the equivalence under our assumptions:
+
+\[ P(C_k | M) = P(C_k) \]
+
+
+
+\end{document}
