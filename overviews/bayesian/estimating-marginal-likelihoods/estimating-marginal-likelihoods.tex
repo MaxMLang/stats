@@ -1,0 +1,123 @@
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{minted}
+\usepackage{biblatex}
+\addbibresource{references.bib}
+
+\title{Estimating Marginal Likelihoods}
+\author{Max Lang}
+\date{}
+\begin{document}
+\maketitle
+We have Monte-Carlo tools summarising
+$$
+\pi(\theta \mid y, m)=\pi(\theta \mid m) p(y \mid \theta, m) / p(y \mid m),
+$$
+the posterior under model $m$ with $\theta \in \Omega_m$. How do we use the MCMC output to do model selection? Let $\hat{p}_m$ estimate the Marginal Likelihood (ML) $p(y \mid m)$ and $\hat{B}_{m^{\prime}, m}$ estimate the Bayes factor $B_{m, m^{\prime}}=p(y \mid m) / p\left(y \mid m^{\prime}\right)$ for comparison of models $M=m$ and $M=m^{\prime}$.
+
+\section{Naive Estimator}
+Since $p(y \mid m)=E_\theta(p(y \mid \theta, m))$ we could simply average the likelihood in the prior. Simulate $\theta^{(t)} \sim \pi(\theta \mid m), t=1 \ldots T$ and form the estimate $\hat{p}_m=T^{-1} \sum_t p\left(y \mid \theta^{(t)}, m\right)$.
+
+\subsection{Intuition}
+Imagine you have a bowl of colored balls, and you want to estimate the average color shade of the balls in the bowl without looking at each one of them. You decide to randomly pick a handful of balls, look at their color shades, and then average those to guess the bowl's overall color shade. In the context of the naive estimate, the bowl is the parameter space, the color of each ball is the likelihood at a given parameter value, and the average color shade you calculate is the naive estimate of the marginal likelihood.
+
+\subsection{Why is it "naive"}
+This approach is called "naive" because it assumes that every part of the parameter space is equally important, which isn't usually true in practice. Some regions of the parameter space will fit the data much better than others (i.e., they have a higher likelihood), but if these regions are small or not sampled well because they are rare under the prior, the naive estimate will not reflect their importance accurately.
+
+\subsection{Why doesn't it make sense?}
+The naive estimate does not work well when the prior distribution is diffuse or spread out over a large parameter space, because:
+\begin{itemize}
+    \item The areas of high likelihood may be very small and rare, so the prior probability of sampling from these areas is low.
+    \item When you simulate from the prior, you might get a lot of parameter values where the likelihood p(y|θ, m) is almost zero, which can heavily skew the average towards zero and give you a very poor estimate.
+    \item In extreme cases, you could end up with a situation where none or very few of your random picks (simulations from the prior) actually represent the important parts of the parameter space where the likelihood is significantly non-zero. This means you're not really capturing the true "color shade" of the bowl at all; you're just averaging a bunch of almost-zero values.
+\end{itemize}
+
+\section{Harmonic Estimate}
+This is importance sampling using the posterior.
+Simulate $\theta^{(t)} \sim \pi(\theta \mid y, m), t=1 \ldots T$, perhaps using MCMC. If
+$$
+w_t=\pi\left(\theta^{(t)} \mid m\right) / \pi\left(\theta^{(t)} \mid y, m\right)
+$$
+then
+$$
+\hat{p}_m^{\prime}=\frac{1}{T} \sum_t w_t p\left(y \mid \theta^{(t)}, m\right)
+$$
+is a consistent and unbiased estimate for $p(y \mid m)$. This is standard importance sampling: since the samples are identically distributed (not necessarily independent),
+$$
+\begin{aligned}
+E_{\theta^{(1: T)} \mid y, m}\left(\hat{p}_m^{\prime}\right) & =T^{-1} \sum_t \int_{\Omega} w_t p\left(y \mid \theta^{(t)}, m\right) \pi\left(\theta^{(t)} \mid y, m\right) d \theta^{(t)} \\
+& =\int_{\Omega} p(y \mid \theta, m) \pi(\theta \mid m) d \theta
+\end{aligned}
+$$
+where $\theta^{(1: T)}=\left(\theta^{(1)}, \ldots, \theta^{(T)}\right)$ and we substituted in the weights and canceled the posterior. 
+
+cant compute normalised weights $w_t$ as we dont know the marginal likelihood which appears in the posterior $\pi\left(\theta^{(t)} \mid y, m\right)$, so we use $\tilde{w}_t \propto w_t$ (ie, dropping the marginal likelihood factor, which is constant in $\left.\theta^{(t)}\right)$. The prior factors cancel and we have
+$$
+\tilde{w}_t=1 / p\left(y \mid \theta^{(t)}, m\right) .
+$$
+
+Now
+$$
+\begin{aligned}
+E_{\theta^{(t)} \mid y, m}\left(\tilde{w}_t\right) & =\int_{\Omega} \frac{\pi\left(\theta^{(t)} \mid y, m\right)}{p\left(y \mid \theta^{(t)}, m\right)} d \theta^{(t)} \\
+& =\int_{\Omega} \frac{\pi(\theta \mid m)}{p(y \mid m)} d \theta \\
+& =p(y \mid m)^{-1}
+\end{aligned}
+$$
+
+It follows that $T^{-1} \sum_t \tilde{w}_t$ converges in probability to $p(y \mid m)^{-1}$. The "self-normalised", biased but still consistent, IS-estimator for the marginal likelihood $p(y \mid m)$ is then the inverse of this,
+$$
+\hat{p}_m=\left[\frac{1}{T} \sum_t \frac{1}{p\left(y \mid \theta^{(t)}, m\right)}\right]^{-1} .
+$$
+
+The Harmonic Mean estimator is another approach to estimating the marginal likelihood \( p(y|m) \) in Bayesian statistics. This estimator uses samples from the posterior distribution \( \pi(\theta|y,m) \), rather than from the prior as in the naive estimate.
+
+\subsection{Intuition}
+To continue with the previous analogy, if the naive estimate is like randomly picking balls from a bowl to guess the average color, the Harmonic Mean estimator is like picking balls based on a rule that prefers certain colors (which have already been identified as closer to the average you're trying to estimate) and then calculating the average differently.
+
+
+\subsection{Why is the Harmonic Mean estimator problematic?}
+The main issue with the Harmonic Mean estimator is its sensitivity to samples where the likelihood is very small. These rare samples can cause the estimated marginal likelihood to become very large since they contribute disproportionately to the mean when taking the reciprocal.
+
+In statistical terms, the Harmonic Mean estimator is not reliable because it has infinite variance in many cases. This means that its estimates can vary wildly with different samples, especially if the posterior distribution has heavy tails—a situation where extreme values are uncommon but have significant effects when they occur.
+
+In the analogy, this would be like occasionally finding a ball with a very dark or very light shade compared to the rest, and even if just one such ball is included in your sample, it could drastically alter the perceived average color of the whole bowl.
+
+\subsection{Why isn't it an option?}
+The Harmonic Mean estimator often yields poor estimates of the marginal likelihood, particularly when the model is complex, and the parameter space is high-dimensional. The estimator is so sensitive to the sampling of the tails of the posterior distribution that it can give highly variable and often misleading results, which makes it unreliable for model comparison.
+
+\section{Bridge Estimatro}
+The Bridge estimator is a technique used to estimate the marginal likelihood \( p(y|m) \) in Bayesian statistics and it involves creating a "bridge" between the prior and posterior distributions.
+
+The Bridge estimator relies on a function \( h(\theta) \), which is a weighting function applied to the samples drawn from the parameter space. The identity used to define the Bridge estimator is given by the equation:
+
+\[ p(y) = \frac{E_{\pi(\theta)}[p(y|\theta)h(\theta)]}{E_{\pi(\theta|y)}[h(\theta)]} \]
+
+Here:
+\begin{itemize}
+    \item \( E_{\pi(\theta)} \) denotes the expectation with respect to the prior distribution \( \pi(\theta) \).
+    \item \( E_{\pi(\theta|y)} \) denotes the expectation with respect to the posterior distribution 
+    \item  \( \pi(\theta|y) \)
+    \item \( p(y|\theta) \) is the likelihood function.
+    \item \( h(\theta) \) is the bridge function, which ideally balances the prior and posterior distributions.
+\end{itemize}
+
+\subsection{Intuition:}
+The intuition behind the Bridge estimator is that by carefully choosing the bridge function \( h(\theta) \), you can "balance" the contributions from the prior and posterior distributions to provide a stable estimate of the marginal likelihood. Essentially, you are constructing a "bridge" that allows for easier traversal between the two distributions, making it more likely that you'll accurately capture the essence of both in your estimation of the marginal likelihood.
+
+\subsection{Why It Is Superior:}
+The superiority of the Bridge estimator over methods like the naive and harmonic mean estimators lies in its robustness and stability. The Bridge estimator:
+\begin{enumerate}
+    \item Provides a more stable estimate, especially when the posterior is concentrated in a small region of the parameter space, because the bridge function can be chosen to emphasize the important regions where the likelihood is significant.
+    \item Is less affected by extreme values or the shape of the tails of the posterior distribution because the bridge function can be tailored to mitigate the influence of rare but extreme samples that trouble the harmonic mean estimator.
+    \item Can provide a consistent estimate of the marginal likelihood when the function \( h(\theta) \) is chosen appropriately, leading to more reliable model comparison results.
+\end{enumerate}
+
+
+\end{document}
