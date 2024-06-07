@@ -1,0 +1,59 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+
+\title{Simulation Methods}
+\author{Max Lang}
+\date{January 2024}
+
+\begin{document}
+
+\maketitle
+
+
+\section{W-F Model Time back until coalescent, limiting process}
+In a Wright-Fisher model with population size $M$, for a sample of size two taken from the population define $\tau_2$ as the time back until a coalescence event occurs. Then setting $T_2=\tau_2 / M$ to measure time in units of $M$ generations, in the limit as $M \rightarrow \infty, T_2$ has an exponential distribution: $T_2^{\sim} \exp (1)$
+
+\subsection{Proof}
+Proof From above:
+$$
+\begin{aligned}
+P\left(\tau_2\right. & \leq k)=1-P\left(\tau_2>k\right) \\
+& =1-\left(1-\frac{1}{M}\right)^k \\
+P\left(T_2\right. & \leq t)=P\left(\tau_2 \leq M t\right)=P\left(\tau_2 \leq\lfloor M t\rfloor\right) \\
+& =1-\left(1-\frac{1}{M}\right)^{\lfloor M t\rfloor}=\left(1-P\left(\tau_2 +
+\lfloor M t\rfloor\right)\right. \\
+& \rightarrow 1-e^{-t} \text { as } M \rightarrow \infty,
+\end{aligned}
+$$
+for any $t>0$ : the c.d.f of $\exp (1)$
+
+
+\section{Coalescent Definition }
+The coalescent is a distribution on binary trees. Starting with $n$ lineages, pairs of lineages coalesce backward in time until a single common ancestor is reached. Defining times $T_n, T_{n-1}, \ldots, T_2$ while $n, n-1, \ldots, 2$ ancestors remain, the times $T_j$ are independent and exponentially distributed:
+$$
+T_j \sim \exp \left[\binom{j}{2}\right] \quad f_j(t)=\binom{j}{2} e^{-\binom{j}{2}^t}, \mathrm{t}>0 \quad E\left(T_j\right)=\frac{2}{j(j-1)}
+$$
+
+At the time of coalescence from $j$ to $j-1$ lineages, a pair of lineages is chosen at random from the $j(j-1) / 2$ possibilities and coalesces.
+
+\section{TMRCA}
+
+$$
+W_n=T_n+T_{n-1}+\ldots+T_2
+$$
+\subsection{Mean and variance of the TMRCA Immediately:}
+$$
+\begin{aligned}
+& E\left(W_n\right)=E\left(T_n\right)+E\left(T_{n-1}\right)+\ldots+E\left(T_2\right) \\
+&=\frac{2}{n(n-1)}+\frac{2}{(n-1)(n-2)}+\ldots+\frac{2}{2 \times 1} \\
+& =\sum_{j=2}^n \frac{2}{j(j-1)}=\sum_{j=2}^n \frac{2}{(j-1)}-\sum_{j=2}^n \frac{2}{j} \\
+&  \\
+&=2\left(1-\frac{1}{n}\right)
+\end{aligned}
+$$
+
+
+\end{document}

@@ -1,0 +1,978 @@
+\documentclass{article}
+\usepackage{graphicx} % Required for inserting images
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+
+\title{Simulation Methods}
+\author{Max Lang}
+\date{January 2024}
+
+\begin{document}
+
+\maketitle
+\section{Monte Carlo Estimator}
+\subsection{Formula}
+$\hat{\imath}_n=\frac{1}{n} \sum_{i=1}^n f\left(X_i\right), \quad X_i \sim \pi$
+
+\subsection{Monte Carlo Integration}
+$$
+I=\int_{\mathbb{X}} \varphi(x) \pi(x) d x=\mathbb{E}_\pi[\varphi(X)],
+$$
+for a specific function $\varphi$ and distribution $\pi$.
+The distribution $\pi$ is  called the "target distribution".
+
+Error estimates via classic error bounds (Chebyshev etc.).
+
+\subsection{Strong law of large numbers: }
+$\widehat{I}_n \rightarrow I$ almost surely
+
+If $\mathbb{E}(|\varphi(X)|)<\infty$ then $\widehat{I}_n$ is a strongly consistent estimator of $I$.
+
+\subsection{Central limit theorem:} 
+If
+$$
+\sigma^2=\mathbb{V}(\varphi(X))=\int_{\mathbb{X}}[\varphi(x)-I]^2 \pi(x) d x<\infty
+$$
+then
+$$
+\mathbb{E}\left(\left(\hat{I}_n-I\right)^2\right)=\mathbb{V}\left(\hat{I}_n\right)=\frac{\sigma^2}{n}
+$$
+and
+$$
+\frac{\sqrt{n}}{\sigma}\left(\hat{I}_n-I\right) \xrightarrow{D} \mathcal{N}(0,1) .
+$$
+
+The random approximation error is
+$$
+\mathcal{O}\left(n^{-1 / 2}\right)
+$$
+whatever the dimension of the state space $\mathbb{X}$.
+
+\subsection{Variance Estimation}
+Assume $\sigma^2=\mathbb{V}(\varphi(X))<\infty$ then
+$$
+S_n^2=\frac{1}{n-1} \sum_{i=1}^n\left(\varphi\left(X_i\right)-\widehat{I}_n\right)^2
+$$
+is an unbiased sample variance estimator of $\sigma^2$.
+
+\subsubsection{Proof}
+Let $Y_i=\varphi\left(X_i\right)$ then we have
+$$
+\begin{aligned}
+\mathbb{E}\left(S_n^2\right) & =\frac{1}{n-1} \sum_{i=1}^n \mathbb{E}\left(\left(Y_i-\bar{Y}\right)^2\right)=\frac{1}{n-1} \mathbb{E}\left(\sum_{i=1}^n Y_i^2-n \bar{Y}^2\right) \\
+\mathbb{E}\left(\bar{Y}^2\right) & =\frac{1}{n^2} \mathbb{E}\left[\sum Y_i^2+\sum_{i \neq j} Y_i Y_j\right]=\frac{1}{n}\left(\mathbb{V}(Y)+I^2\right)+\frac{n-1}{n} I^2 \\
+& =\frac{\mathbb{V}(Y)}{n}+l^2 \\
+\mathbb{E}\left(S_n^2\right) & =\frac{n}{n-1} \mathbb{V}(Y)-\frac{n}{n-1} \frac{\mathbb{V}(Y)}{n}+\frac{n}{n-1} l^2-\frac{n}{n-1} I^2 \\
+& =\mathbb{V}(Y)=\mathbb{V}(\varphi(X)) .
+\end{aligned}
+$$
+
+\section{Perfect Simulation methods}
+\subsection{Inverse transform method}
+Let $F$ be a cdf and $U \sim \mathcal{U}_{[0,1]}$. Then $X=F^{-}(U)$ has cdf $F$.
+
+\subsubsection{Proof}
+Fact: $F^{-}(u) \leq x \Leftrightarrow u \leq F(x)$.
+Thus for $U \sim \mathcal{U}_{[0,1]}$, we have
+$$
+\mathbb{P}\left(F^{-}(U) \leq x\right)=\mathbb{P}(U \leq F(x))=F(x) .
+$$
+\subsection{Transformation Methods}
+We can simulate $Y \sim q, Y \in \mathbb{Y}$.
+We want to simulate: $X \sim \pi, X \in \mathbb{X}$.
+Transformation method: find a function $\varphi: \mathbb{Y} \rightarrow \mathbb{X}$ such that
+$$
+Y \sim q \Longrightarrow X=\varphi(Y) \sim \pi \text {. }
+$$
+
+Inversion is a special case of this idea.
+
+\subsection{Box Muller Algorithm / Transformations}
+$f_Y(y)=f_X\left(\phi^{-1}(y)\right)\left|\operatorname{det} J_{\phi^{-1}}(y)\right|$
+
+
+
+By standard facts:
+$$
+\begin{aligned}
+f_{X, Y}(x, y) & =f_{R^2, \vartheta}\left(r^2(x, y), \vartheta(x, y)\right)\left|\operatorname{det} \frac{\partial\left(r^2, \vartheta\right)}{\partial(x, y)}\right| \\
+& =f_{R^2, \vartheta}\left(r^2(x, y), \vartheta(x, y)\right)\left|\operatorname{det} \frac{\partial(x, y)}{\partial\left(r^2, \vartheta\right)}\right|^{-1} \\
+& =\frac{1}{2} \frac{1}{2 \pi} \exp \left[-\frac{x^2+y^2}{2}\right] 2=\frac{1}{2 \pi} \exp \left[-\frac{x^2+y^2}{2}\right],
+\end{aligned}
+$$
+since
+$$
+\left.\operatorname{det} \frac{\partial(x, y)}{\partial\left(r^2, \vartheta\right)}|=| \begin{array}{ll}
+\frac{\cos (\vartheta)}{2 r} & -r \sin \vartheta \\
+\frac{\sin (\vartheta)}{2 r} & r \cos \vartheta
+\end{array} \right\rvert\,=\frac{1}{2} \text {. }
+$$
+thus $(X, Y)$ are independent standard normal.
+
+\section{Rejection sampling}
+Algorithm (Rejection Sampling). Given two densities $\pi, q$ with $\pi(x) \leq M q(x)$ for all $x$, and some $M>0$, we can generate a sample from $\pi$ by
+1. Draw $X \sim q$, draw $U \sim \mathcal{U}_{[0,1]}$.
+2. Accept $X=x$ as a sample from $\pi$ if
+$$
+U \leq \frac{\pi(x)}{M q(x)}
+$$
+otherwise go to step 1.
+
+\subsection{Conditions required to use it}
+\begin{itemize}
+    \item Target distribution $q(x)$ should be:
+    \begin{itemize}
+        \item Easy to sample from
+        \item and have similar shape as $\pi(x)$
+    \end{itemize}
+\end{itemize}
+
+\subsection{Proof of correctness}
+$$
+\mathbb{P}(X \in A \mid X \text { accepted })=\frac{\mathbb{P}(X \in A, X \text { accepted })}{\mathbb{P}(X \text { accepted })}
+$$
+where
+$$
+\begin{aligned}
+& \mathbb{P}(X \in A, X \text { accepted }) \\
+& =\int_{\mathbb{X}} \int_0^1 \mathbb{I}_A(x) \mathbb{I}\left(u \leq \frac{\pi(x)}{M q(x)}\right) q(x) d u d x \\
+& =\int_{\mathbb{X}} \mathbb{I}_A(x) \frac{\pi(x)}{M q(x)} q(x) d x \\
+& =\int_{\mathbb{X}} \mathbb{I}_A(x) \frac{\pi(x)}{M} d x=\frac{\pi(A)}{M} .
+\end{aligned}
+$$
+
+\subsection{Run time, computational complexity, limitations}
+\subsection{Expected Time per Sample}
+$T$ is geometrically distributed with parameter $1 / M$ and in particular $\mathbb{E}(T)=M$. 
+
+If M is large, the algorithm will be slow!
+
+
+\subsubsection{Proof}
+In the unnormalised case, this yields
+$$
+\begin{gathered}
+\mathbb{P}(X \text { accepted })=\frac{1}{M}=\frac{Z_\pi}{\widetilde{M} Z_q}, \\
+\mathbb{E}(T)=M=\frac{Z_q \widetilde{M}}{Z_\pi},
+\end{gathered}
+$$
+and it can be used to provide unbiased estimates of $Z_\pi / Z_q$ and $Z_q / Z_\pi$.
+
+\subsubsection{Limitations}
+Rejection sampling requires
+\begin{itemize}
+    \item Samples from some distribution $q$
+    \item Evaluation of $\pi(\cdot)$ point-wise, or unnormalised $\tilde{\pi}$ 
+    \item An upper bound $M$ on $\pi(x) / q(x)$, or $\tilde{\pi}(x) / \widetilde{q}(x)$ and so on (e.g., by optimization).
+\end{itemize}
+
+
+\section{Importance Sampling}
+\subsection{Classic Estimator}
+$\hat{I}_n=\frac{1}{n} \sum_{i=1}^n \frac{\pi\left(X_i\right)}{q\left(X_i\right)} f\left(X_i\right), \quad X_i \sim q$
+
+\subsection{Variance Important Sampling}
+$$
+\sigma_{\text {IS }}^2=\mathbb{V}_q(\varphi(X) w(X))=\mathbb{E}_q\left(\varphi^2(X) w^2(X)\right)-I^2 .
+$$
+
+\subsection{Bias}
+Unbiased: $\mathbb{E}_q\left[\mathbb{I}_n^S\right]=I$;
+
+\subsection{Consistency}
+Strongly consistent: If $\mathbb{E}_q(|\varphi(X)| w(X))<\infty$ then
+$$
+\lim _{n \rightarrow \infty} \widehat{I}_n^{I S}=I, \quad \text { a.s. }
+$$
+
+\subsection{CLT}
+$\mathbb{V}_q\left(\widehat{I}_n^{IS}\right)=\sigma_{I S}^2 / n$ where
+$$
+\sigma_{I S}^2:=\mathbb{V}_q(\varphi(X) w(X))
+$$
+
+If $\sigma_{I S}^2<\infty$ then
+$$
+\lim _{n \rightarrow \infty} \sqrt{n}\left(\hat{I}_n^{IS}-I\right) \xrightarrow{D} \mathcal{N}\left(0, \sigma_{I S}^2\right) .
+$$
+
+\subsection{Optimal Proposal}
+The optimal proposal minimising $\mathbb{V}_q\left(\hat{I}_n^S\right)$ is given by
+$$
+q_{\text {opt }}(x)=\frac{|\varphi(x)| \pi(x)}{\int_{\mathbb{X}}|\varphi(x)| \pi(x) d x} .
+$$
+\subsubsection{Proof}
+We have indeed
+$$
+\sigma_{\text {IS }}^2=\mathbb{V}_q(\varphi(X) w(X))=\mathbb{E}_q\left(\varphi^2(X) w^2(X)\right)-I^2 .
+$$
+
+We also have by Jensen's inequality for any $q$
+$$
+\mathbb{E}_q\left(\varphi^2(X) w^2(X)\right) \geq\left(\int_{\mathbb{X}}|\varphi(x)| \pi(x) d x\right)^2 .
+$$
+
+For $q=q_{\text {opt}}$, we have
+$$
+\begin{aligned}
+\mathbb{E}_{q_{\text {opt }}}\left(\varphi^2(X) w^2(X)\right) & =\int_{\mathbb{X}} \frac{\varphi^2(x) \pi^2(x)}{|\varphi(x)| \pi(x)} d x \times \int_{\mathbb{X}}|\varphi(x)| \pi(x) d x \\
+& =\left(\int_{\mathbb{X}}|\varphi(x)| \pi(x) d x\right)^2
+\end{aligned}
+$$
+
+\section{Self-normalised}
+Assume $\pi(x)=\tilde{\pi}(x) / Z_\pi$ and $q(x)=\tilde{q}(x) / Z_q$, $\pi(x)>0 \Rightarrow q(x)>0$ and and define
+$$
+\widetilde{w}(x)=\frac{\widetilde{\pi}(x)}{\widetilde{q}(x)} .
+$$
+
+An alternative identity is
+$$
+I=\mathbb{E}_\pi(\varphi(X))=\frac{\int_{\mathbb{X}} \varphi(x) \widetilde{w}(x) q(x) d x}{\int_{\mathbb{X}} \widetilde{w}(x) q(x) d x} .
+$$
+\subsection{Variance}
+$$
+\begin{aligned}
+\sigma_{NIS}^2 & :=\mathbb{V}_q([w(X)(\varphi(X)-I)]) \\
+& =\int \frac{\pi(x)^2(\varphi(x)-I)^2}{q(x)} \mathrm{d} x .
+\end{aligned}
+$$
+\subsection{SLLN}
+Let $X_1, \ldots, X_n \stackrel{\text { i.i.d. }}{\sim} q$ and assume that $\mathbb{E}_q(|\varphi(X)| w(X))<\infty$. Then
+$$
+\widetilde{I}_n^{N / S}=\frac{\sum_{i=1}^n \varphi\left(X_i\right) \widetilde{w}\left(X_i\right)}{\sum_{i=1}^n \widetilde{w}\left(X_i\right)}
+$$
+is strongly consistent.
+
+\subsubsection{Proof}
+Divide numerator and denominator by n. Both converge almost surely by the strong law of large numbers. 
+
+\subsubsection{Remark}
+For finite $n \widehat{I}_n^{\text {NIS }}$ is biased
+\subsection{CLT}
+If $\mathbb{V}_q(\varphi(X) w(X))<\infty$ and $\mathbb{V}_q(w(X))<\infty$ then
+$$
+\sqrt{n}\left(\widehat{I}_n^{N I S}-I\right) \Rightarrow \mathcal{N}\left(0, \sigma_{N I S}^2\right),
+$$
+where
+$$
+\begin{aligned}
+\sigma_{NIS}^2 & :=\mathbb{V}_q([w(X)(\varphi(X)-I)]) \\
+& =\int \frac{\pi(x)^2(\varphi(x)-I)^2}{q(x)} \mathrm{d} x .
+\end{aligned}
+$$
+\subsubsection{Proof}
+First notice that with $X_1, \ldots, X_n$ i.i.d. $\sim q$
+$$
+\sqrt{n}\left(\overparen{I}_n^{\mathrm{NIS}}-I\right)=\frac{\frac{1}{\sqrt{n}} \sum_{i=1}^n \widetilde{w}\left(X_i\right)\left[\varphi\left(X_i\right)-I\right]}{\frac{1}{n} \sum_{i=1}^n \widetilde{w}\left(X_i\right)}
+$$
+where since $\widetilde{w}(x)=\widetilde{\pi} / \widetilde{q}$
+$$
+\mathbb{E}_q\left[\widetilde{w}\left(X_n\right)\left(\varphi\left(X_i\right)-l\right)\right]=0 .
+$$
+
+Since $\mathbb{V}_q(\varphi(X) w(X))<\infty$ by standard CLT
+$$
+\frac{1}{\sqrt{n}} \sum_{i=1}^n \widetilde{w}\left(X_i\right)\left[\varphi\left(X_i\right)-I\right] \Rightarrow \mathcal{N}\left(0, \mathbb{V}_q\left(\widetilde{w}\left(X_1\right)\left[\varphi\left(X_1\right)-I\right]\right)\right)
+$$
+
+The strong law of large numbers applied to the denominator
+$$
+\frac{1}{n} \sum_{i=1}^n \widetilde{w}\left(X_i\right) \rightarrow \mathbb{E}_q\left[\widetilde{w}\left(X_1\right)\right]=Z_\pi / Z_q, \quad \text { a.s. }
+$$
+
+By Slutsky's theorem, combining the two
+$$
+\begin{aligned}
+\sqrt{n}\left(\widehat{I}_n^{\text {NIS }}-I\right) & \Rightarrow \mathcal{N}\left(0, \mathbb{V}_q\left(\widetilde{w}\left(X_1\right)\left[\varphi\left(X_1\right)-I\right]\right) \frac{Z_q^2}{Z_\pi^2}\right) \\
+& \sim \mathcal{N}\left(0, \sigma_{\text {NIS }}^2\right) .
+\end{aligned}
+$$
+\section{Variance Importance Sampling}
+\subsection{Standard IS}
+$X_1, \ldots, X_n \stackrel{i i d}{\sim} q$,
+$$
+\widehat{I}_n^{IS}=\frac{1}{n} \sum_{i=1}^n \varphi\left(X_i\right) w\left(X_i\right) .
+$$
+- Asymptotic Variance:
+$$
+\begin{aligned}
+\mathbb{V}_{\text {as }}\left(\grave{I}_n^{IS}\right) & =\mathbb{E}_q\left[\left(\varphi(X) w(X)-\mathbb{E}_q(\varphi(X) w(X))\right)^2\right] \\
+& \approx \frac{1}{n} \sum_{i=1}^n\left(\varphi\left(X_i\right) w\left(X_i\right)-\hat{I}_n^{\mathrm{IS}}\right)^2 .
+\end{aligned}
+$$
+- Thus the asymptotic variance can be estimated consistently with
+$$
+\frac{1}{n} \sum_{i=1}^n\left(\varphi\left(X_i\right) w\left(X_i\right)-\widehat{I}_n^{\mathrm{IS}}\right)^2
+$$
+\subsection{Normalised IS}
+\subsubsection{Variance}
+$X_1, \ldots, X_n \stackrel{i i d}{\sim} q$,
+$$
+\widetilde{I}_n^{\text {NIS }}=\frac{\sum_{i=1}^n \varphi\left(X_i\right) \widetilde{w}\left(X_i\right)}{\sum_{i=1}^n \widetilde{w}\left(X_i\right)} .
+$$
+\subsubsection{Asymptotic Variance:}
+
+$$
+\mathbb{V}_{\text {as }}\left(\tilde{I}_n^{\text {NIS }}\right)=\frac{\mathbb{E}_q\left[(\widetilde{w}(x)(\varphi(X)-I))^2\right]}{\mathbb{E}_q[\widetilde{w}(X)]^2} .
+$$
+
+Consistently estimated!
+
+\subsection{Performance}
+Importance Sampling standard deviation in the Gaussian example in $\exp (d) n^{-1 / 2}$.
+
+The rate is indeed independent of $d$ but the "constant" (in n) explodes exponentially (in d).
+
+\section{MCMC}
+\subsection{Markov Property}
+$$
+\mathbb{P}\left(X_t=x_t \mid X_1=x_1, \ldots, X_{t-1}=x_{t-1}\right)=\mathbb{P}\left(X_t=x_t \mid X_{t-1}=x_{t-1}\right)
+$$
+The future is conditionally independent of the past given the present.
+\subsection{Homogeneous Markov chains:}
+$$
+\forall m \in \mathrm{N}: \mathbb{P}\left(X_t=y \mid X_{t-1}=x\right)=\mathbb{P}\left(X_{t+m}=y \mid X_{t+m-1}=x\right)
+$$
+\subsection{Transition Kernel}
+The Markov transition kernel is a stochastic matrix
+$$
+K(i, j)=K_{i j}=\mathbb{P}\left(X_t=j \mid X_{t-1}=i\right) .
+$$
+\subsection{Chapman-Kolmogorov equation}
+$$
+K_{i j}^{m+n}=\sum_{k \in \mathbb{X}} K_{i k}^m K_{k j}^n .
+$$
+\subsection{Invariant Distributions}
+A distribution $\pi$ is invariant for a Markov kernel $K$, if
+a distribution of density $\pi$ is invariant or stationary for a Markov kernel $K$, if
+$$
+\int_{\mathbb{X}} \pi(x) K(x, y) d x=\pi(y) .
+$$
+
+A Markov kernel $K$ is $\pi$-reversible if
+$$
+\begin{aligned}
+& \forall f \quad \iint f(x, y) \pi(x) K(x, y) d x d y \\
+&= \iint f(x, y) \pi(y) K(y, x) d x d y
+\end{aligned}
+$$
+
+\subsection{Irreducibility}
+A Markov chain is said to be irreducible if all the states communicate with each other, that is
+$$
+\forall x, y \in \mathbb{X} \quad \min \left\{t: K_{x y}^t>0\right\}<\infty
+$$
+
+\subsection{Transcience, Recurrence, Harris Recurrence}
+Given a probability measure $\mu$ over $\mathbb{X}$, a Markov chain is \textbf{$\mu$-irreducible }if
+$$
+\forall x \in \mathbb{X} \quad \forall A: \mu(A)>0 \quad \exists t \in \mathbb{N} \quad K^t(x, A)>0
+$$
+A $\mu$-irreducible Markov chain is \textbf{recurrent} if for any measurable set $A \subset \mathbb{X}: \mu(A)>0$, then
+$$
+\forall x \in A \quad \mathbb{E}_x\left(\eta_A\right)=\infty
+$$
+
+A\textbf{ $\mu$-irreducible Markov chain is Harris recurrent} if for any measurable set $A \subset \mathbb{X}: \mu(A)>0$, then
+$$
+\forall x \in \mathbb{X} \quad \mathbb{P}_x\left(\eta_A=\infty\right)=1
+$$
+
+Note Harris recurrence is stronger than recurrence.
+
+\subsection{DB}
+
+$$
+\forall x, y \in \mathbb{X} \quad \pi(x) K(x, y)=\pi(y) K(y, x)
+$$
+
+\textbf{Lemma}
+If detailed balance holds, then $\pi$ is invariant for $K$ and $K$ is $\pi$-reversible.
+
+\subsection{Limit Theorems}
+\subsection{Ergodicity and LLN}
+Suppose the Markov chain $\left\{X_i ; i \geq 0\right\}$ is $\pi$-irreducible, with invariant distribution $\pi$, and suppose that $X_0=x$.
+Then for any $\pi$-integrable function $\phi: \mathbb{X} \rightarrow \mathbb{R}$ :
+$$
+\lim _{t \rightarrow \infty} \frac{1}{t} \sum_{i=1}^t \phi\left(X_i\right)=\int_{\mathbb{X}} \phi(w) \pi(w) \mathrm{d} w
+$$
+
+If the chain in addition is Harris recurrent then this holds for every starting value $x$.
+
+\subsubsection{Geometric Ergodicity}
+Suppose the kernel $K$ is $\pi$-irreducible, $\pi$-invariant, aperiodic. Then, we have
+$$
+\lim _{t \rightarrow \infty} \int_{\mathbb{X}}\left|K^t(x, y)-\pi(y)\right| d y=0
+$$
+for $\pi$-almost all starting values $x$.
+
+Under some additional conditions, one can prove that there exists a $\rho<1$ and a function $M: \mathbb{X} \rightarrow \mathbb{R}^{+}$such that for all measurable sets $A$ and all $n$
+$$
+\left|K^n(x, A)-\pi(A)\right| \leq M(x) \rho^n .
+$$
+
+The chain is then said to be geometrically ergodic.
+
+\subsubsection{CLT}
+
+Under regularity conditions, for a Harris recurrent, $\pi$-invariant Markov chain, we can prove
+$$
+\sqrt{t}\left[\frac{1}{t} \sum_{i=1}^t \phi\left(X_i\right)-\int_{\mathbb{X}} \phi(x) \pi(x) \mathrm{d} x\right] \underset{t \rightarrow \infty}{\mathcal{D}} \mathcal{N}\left(0, \sigma^2(\phi)\right),
+$$
+where the asymptotic variance can be written
+$$
+\sigma^2(\phi)=\mathbb{V}_\pi\left[\phi\left(X_1\right)\right]+2 \sum_{k=2}^{\infty} \operatorname{Cov}_\pi\left[\phi\left(X_1\right), \phi\left(X_k\right)\right] .
+$$
+
+\section{Gibbs Sampling}
+\subsection{Systematic scan Gibbs sampler}
+Let $\left(X_1^{(1)}, \ldots, X_d^{(1)}\right)$ be the initial state then iterate for $t=2,3, \ldots$
+1. Sample $X_1^{(t)} \sim \pi_{X_1 \mid X_{-1}}\left(\cdot \mid X_2^{(t-1)}, \ldots, X_d^{(t-1)}\right)$.
+\newline
+j. Sample
+$$
+X_j^{(t)} \sim \pi_{X_j \mid X_{-j}}\left(\cdot \mid X_1^{(t)}, \ldots, X_{j-1}^{(t)}, X_{j+1}^{(t-1)}, \ldots, X_d^{(t-1)}\right)
+$$
+\newline
+d. Sample $X_d^{(t)} \sim \pi_{X_d \mid X_{-d}}\left(\cdot \mid X_1^{(t)}, \ldots, X_{d-1}^{(t)}\right)$.
+
+
+\subsection{Positivity Condition}
+The positivity condition is sufficient for the Gibbs sampler to be irreducible.
+
+\subsubsection{Proposition}
+Assume $\pi$ satisfies the positivity condition, then the Gibbs sampler yields a $\pi$-irreducible and recurrent * Markov chain.
+
+\subsubsection{Proof}
+\textbf{Recurrence} follows from irreducibility and the fact that $\pi$ is invariant.
+
+\textbf{Irreducibility}. Let $\mathbb{X} \subset \mathbb{R}^d$, such that $\pi(\mathbb{X})=1$. Write $K$ for the kernel and let $A \subset \mathbb{X}$ such that $\pi(A)>0$. Then for any $x \in \mathbb{X}$
+$$
+\begin{aligned}
+K(x, A)= & \int_A K(x, y) \mathrm{d} y \\
+= & \int_A \pi_{X_1 \mid X_{-1}}\left(y_1 \mid x_2, \ldots, x_d\right) \times \cdots \\
+& \times \pi_{X_d \mid X_{-d}}\left(y_d \mid y_1, \ldots, y_{d-1}\right) \mathrm{d} y .
+\end{aligned}
+$$
+
+Thus if for some $x \in \mathbb{X}$ and $A$ with $\pi(A)>0$ we have $K(x, A)=0$, we must have that
+$$
+\pi_{X_1 \mid X_{-1}}\left(y_1 \mid x_2, \ldots, x_d\right) \times \cdots \times \pi_{X_d \mid X_{-d}}\left(y_d \mid y_1, \ldots, y_{d-1}\right)=0,
+$$
+for almost all $y=\left(y_1, \ldots, y_d\right) \in A$.
+Therefore, by the Hammersley-Clifford theorem, we must also have that
+$$
+\pi\left(y_1, y_2, \ldots, y_d\right) \propto \prod_{j=1}^d \frac{\pi_{X_j \mid X_{-j}}\left(y_j \mid y_{1: j-1}, x_{j+1: d}\right)}{\pi_{X_j \mid X_{-j}}\left(x_j \mid y_{1: j-1}, x_{j+1: d}\right)}=0,
+$$
+for almost all $y=\left(y_1, \ldots, y_d\right) \in A$ and thus $\pi(A)=0$ obtaining a contradiction.
+
+\subsection{Kernel}
+The kernel of the Gibbs sampler (case $d=2$ ) is
+$$
+K\left(x^{(t-1)}, x^{(t)}\right)=\pi_{X_1 \mid X_2}\left(x_1^{(t)} \mid x_2^{(t-1)}\right) \pi_{X_2 \mid X_1}\left(x_2^{(t)} \mid x_1^{(t)}\right)
+$$
+
+\subsubsection{Invariance of the Kernel}
+The systematic scan Gibbs sampler kernel admits $\pi$ as invariant distribution.
+
+Case $d>2$ :
+$$
+K\left(x^{(t-1)}, x^{(t)}\right)=\prod_{j=1}^d \pi_{X_j \mid X_{-j}}\left(x_j^{(t)} \mid x_{1: j-1}^{(t)}, x_{j+1: d}^{(t-1)}\right)
+$$
+
+\subsubsection{Proof for $d=2$.}
+Let $x=\left(x_1, x_2\right)$ and $y=\left(y_1, y_2\right)$. Then we have
+$$
+\begin{aligned}
+& \int K(x, y) \pi(x) d x=\int \pi\left(y_2 \mid y_1\right) \pi\left(y_1 \mid x_2\right) \pi\left(x_1, x_2\right) d x_1 d x_2 \\
+& =\pi\left(y_2 \mid y_1\right) \int \pi\left(y_1 \mid x_2\right) \pi\left(x_2\right) d x_2 \\
+& =\pi\left(y_2 \mid y_1\right) \pi\left(y_1\right)=\pi\left(y_1, y_2\right)=\pi(y) .
+\end{aligned}
+$$
+
+\subsection{Gibbs Sampling for Mixture Models}
+
+\subsubsection*{Motivation and Use}
+\begin{itemize}
+    \item \textbf{Efficient Sampling}: Gibbs sampling allows for efficient sampling from complex, high-dimensional distributions where direct sampling is difficult.
+    \item \textbf{Simplifies Computation}: By breaking down the sampling process into conditional distributions, Gibbs sampling simplifies the computation, making it feasible to handle large datasets and complex models.
+    \item \textbf{Wide Applicability}: Useful in various applications such as mixture models, capture-recapture models, Tobit models, and Bayesian logistic regression.
+\end{itemize}
+
+\subsubsection*{How to Approach a Problem: Step-by-Step Guide to Constructing a Gibbs Sampler for Mixture Models}
+\begin{enumerate}
+    \item \textbf{Define the Model}:
+    \begin{itemize}
+        \item Specify the likelihood function and the prior distributions for the parameters.
+        \item Example for a mixture of Gaussians: 
+        \[
+        p(y_i | \theta) = \sum_{k=1}^K p(Z_i = k | \theta) \mathcal{N}(y_i; \mu_k, \sigma_k^2)
+        \]
+    \end{itemize}
+    
+    \item \textbf{Introduce Auxiliary Variables}:
+    \begin{itemize}
+        \item Introduce latent variables \(Z_i\) to indicate the component from which each observation is drawn.
+        \item This helps in simplifying the posterior distribution.
+    \end{itemize}
+    
+    \item \textbf{Extended Joint Distribution}:
+    \begin{itemize}
+        \item Construct the joint distribution of the observed data \(y\), the parameters \(\theta\), and the latent variables \(Z\):
+        \[
+        p(\theta, Z | y) \propto p(\theta) \prod_{i=1}^n p(Z_i | \theta) p(y_i | Z_i, \theta)
+        \]
+    \end{itemize}
+    
+    \item \textbf{Derive Full Conditional Distributions}:
+    \begin{itemize}
+        \item Derive the conditional distributions for each parameter given the others. These typically include:
+        \begin{itemize}
+            \item \( p(\mu_k | \text{rest}) \)
+            \item \( p(\sigma_k^2 | \text{rest}) \)
+            \item \( p(Z_i | \text{rest}) \)
+        \end{itemize}
+    \end{itemize}
+    
+    \item \textbf{Iterate Gibbs Sampling Steps}:
+    \begin{itemize}
+        \item Sample from each conditional distribution in turn.
+        \item Repeat until convergence.
+    \end{itemize}
+\end{enumerate}
+
+\subsubsection*{Worked Example: Gaussian Mixture Model}
+\begin{enumerate}
+    \item \textbf{Model Specification}:
+    \begin{itemize}
+        \item Likelihood:
+        \[
+        p(y_i | \mu, \sigma^2, Z) = \prod_{i=1}^n \sum_{k=1}^K p(Z_i = k) \mathcal{N}(y_i; \mu_k, \sigma_k^2)
+        \]
+        \item Prior distributions:
+        \[
+        \mu_k \sim \mathcal{N}(0, 1), \quad \sigma_k^2 \sim \text{Inverse-Gamma}(\alpha, \beta), \quad Z_i \sim \text{Categorical}(\pi)
+        \]
+    \end{itemize}
+    
+    \item \textbf{Introduce Latent Variables \(Z_i\)}:
+    \begin{itemize}
+        \item Assign each data point to a cluster \(Z_i\) with probabilities \(p(Z_i = k) = \pi_k\).
+    \end{itemize}
+    
+    \item \textbf{Extended Joint Distribution}:
+    \begin{itemize}
+        \item Write the extended joint distribution:
+        \[
+        p(\mu, \sigma^2, Z | y) \propto p(\mu) p(\sigma^2) p(Z) \prod_{i=1}^n p(y_i | \mu, \sigma^2, Z)
+        \]
+    \end{itemize}
+    
+    \item \textbf{Full Conditional Distributions}:
+    \begin{itemize}
+        \item For \(Z_i\):
+        \[
+        p(Z_i = k | y, \mu, \sigma^2) \propto \pi_k \mathcal{N}(y_i; \mu_k, \sigma_k^2)
+        \]
+        \item For \(\mu_k\):
+        \[
+        \mu_k | y, Z, \sigma^2 \sim \mathcal{N}\left( \frac{\sum_{i:Z_i=k} y_i}{n_k + 1}, \frac{1}{n_k + 1} \right)
+        \]
+        \item For \(\sigma_k^2\):
+        \[
+        \sigma_k^2 | y, Z, \mu \sim \text{Inverse-Gamma}\left( \alpha + \frac{n_k}{2}, \beta + \frac{1}{2}\sum_{i:Z_i=k} (y_i - \mu_k)^2 \right)
+        \]
+    \end{itemize}
+    
+    \item \textbf{Iterate Gibbs Sampling Steps}:
+    \begin{itemize}
+        \item Initialize parameters \(\mu\), \(\sigma^2\), and \(Z\).
+        \item Repeat:
+        \begin{itemize}
+            \item Sample \(Z_i\) from \(p(Z_i | y, \mu, \sigma^2)\)
+            \item Sample \(\mu_k\) from \(p(\mu_k | y, Z, \sigma^2)\)
+            \item Sample \(\sigma_k^2\) from \(p(\sigma_k^2 | y, Z, \mu)\)
+        \end{itemize}
+        \item Until convergence is achieved.
+    \end{itemize}
+\end{enumerate}
+
+
+\section{Metropolis Hastings}
+\subsection{General Definition}
+\begin{itemize}
+    \item Proposal distribution: for any $x, x^{\prime} \in \mathbb{X}$, we have $q\left(x^{\prime} \mid x\right) \geq 0$ and $\int_{\mathbb{X}} q\left(x^{\prime} \mid x\right) d x^{\prime}=1$.
+    \item -Starting with $X^{(1)}$, for t=2,3, \ldots
+\begin{itemize}
+    \item 1. Sample $X^{\star} \sim q\left(\cdot \mid X^{(t-1)}\right)$.
+    \item 2. Compute 
+$$
+\alpha\left(X^{\star} \mid X^{(t-1)}\right)=\min \left(1, \frac{\pi\left(X^{\star}\right) q\left(X^{(t-1)} \mid X^{\star}\right)}{\pi\left(X^{(t-1)}\right) q\left(X^{\star} \mid X^{(t-1)}\right)}\right) .
+$$
+\item Sample $U \sim \mathcal{U}_{[0,1] \text {. If }} U \leq \alpha\left(X^{\star} \mid X^{(t-1)}\right)$, set $X^{(t)}=X^{\star}$, otherwise set $X^{(t)}=X^{(t-1)}$.
+\end{itemize}
+\end{itemize}Target distribution on $\mathbb{X}=\mathbb{R}^d$ of density $\pi(x)$.
+
+\subsection{Systematic Scan}
+Algorithm. Systematic scan Metropolis-Hastings sampler. Let $\left(X_1^{(1)}, \ldots, X_d^{(1)}\right)$ be the initial state then iterate for $t=2,3, \ldots$
+- For component 1,
+1. sample $X_1 \sim q_1\left(\cdot \mid X_1^{(t-1)}, X_2^{(t-1)}, \ldots, X_d^{(t-1)}\right)$.
+2. Compute
+$$
+\alpha_1=\min \left(1, \frac{\pi\left(X_1, X_2^{(t-1)}, \ldots, X_d^{(t-1)}\right) q\left(X_1^{(t-1)} \mid X_1, X_2^{(t-1)}, \ldots, X_d^{(t-1)}\right)}{\pi\left(X_1^{(t-1)}, X_2^{(t-1)}, \ldots, X_d^{(t-1)}\right) q\left(X_1 \mid X_1^{(t-1)}, X_2^{(t-1)}, \ldots, X_d^{(t-1)}\right)}\right)
+$$
+3. With probability $\alpha_1$, set $X_1^{(t)}=X_1$, otherwise set $X_1^{(t)}=X_1^{(t-1)}$.
+7
+- For component $j$,
+1. Sample $X_j \sim q_j\left(\cdot \mid X_1^{(t)}, \ldots, X_{j-1}^{(t)}, X_j^{(t-1)}, \ldots, X_d^{(t-1)}\right)$.
+2. Compute
+$$
+\alpha_j=\min \left(1, \frac{\pi\left(X_1^{(t)}, \ldots, X_{j-1}^{(t)}, X_j, X_{j+1}^{(t-1)}, \ldots, X_d^{(t-1)}\right) q\left(X_j^{(t-1)} \mid X_1^{(t)}, \ldots, X_{j-1}^{(t)}, X_j, X_{j+1}^{(t-1)}, \ldots, X_d^{(t-1)}\right)}{\pi\left(X_1^{(t)}, \ldots, X_{j-1}^{(t)}, X_j^{(t-1)}, \ldots, X_d^{(t-1)}\right) q\left(X_j \mid X_1^{(t)}, \ldots, X_{j-1}^{(t)}, X_j^{(t-1)}, \ldots, X_d^{(t-1)}\right)}\right)
+$$
+3. With probability $\alpha_j$, set $X_j^{(t)}=X_j$, otherwise set $X_j^{(t)}=X_j^{(t-1)}$.
+$\cdots$
+- For component d
+1. Sample $X_d \sim q_d\left(\cdot \mid X_1^{(t)}, \ldots, X_{d-1}^{(t)}, X_d^{(t-1)}\right)$.
+2. Compute
+$$
+\alpha_d=\min \left(1, \frac{\pi\left(X_1^{(t)}, \ldots, X_{d-1}^{(t)}, X_d\right) q\left(X_d^{(t-1)} \mid X_1^{(t)}, \ldots, X_{d-1}^{(t)}, X_d\right)}{\pi\left(X_1^{(t)}, \ldots, X_{d-1}^{(t)}, X_d^{(t-1)}\right) q\left(X_d \mid X_1^{(t)}, \ldots, X_{d-1}^{(t)}, X_d^{(t-1)}\right)}\right)
+$$
+3. With probability $\alpha_d$, set $X_d^{(t)}=X_d$, otherwise set $X_d^{(t)}=X_d^{(t-1)}$.
+\subsection{Random Scan}
+1. Sample an index $J$ from a distribution on $\{1, \ldots, d\}$ (typically uniform).
+(a) Sample $X_J \sim q_J\left(\cdot \mid X_1^{(t-1)}, \ldots, X_d^{(t-1)}\right)$.
+(b) Compute
+$$
+\alpha_J=\min \left(1, \frac{\pi\left(X_1^{(t-1)}, \ldots, X_J, \ldots, X_d^{(t-1)}\right) q\left(X_J^{(t-1)} \mid X_1^{(t-1)}, \ldots,, X_J, \ldots, X_d^{(t-1)}\right)}{\pi\left(X_1^{(t-1)}, \ldots, X_d^{(t-1)}\right) q\left(X_J \mid X_1^{(t-1)}, \ldots, X_d^{(t-1)}\right)}\right)
+$$
+(c) With probability $\alpha_J$, set $X_J^{(t)}=X_J$, otherwise set $X_J^{(t)}=X_J^{(t-1)}$.
+2. Set $X_{-J}^{(t)}:=X_{-J}^{(t-1)}$.
+
+
+
+\subsection{Kernel}
+The kernel of the Metropolis-Hastings algorithm is given by
+$$
+K(x, y)=\alpha(y \mid x) q(y \mid x)+(1-a(x)) \delta_x(y) .
+$$
+\subsubsection{Proof}
+Proof.
+We have
+$$
+\begin{aligned}
+& K(x, y) \\
+& =\int q\left(x^{\star} \mid x\right)\left\{\alpha\left(x^{\star} \mid x\right) \delta_{x^{\star}}(y)+\left(1-\alpha\left(x^{\star} \mid x\right)\right) \delta_x(y)\right\} d x^{\star} \\
+& =q(y \mid x) \alpha(y \mid x)+\left\{\int q\left(x^{\star} \mid x\right)\left(1-\alpha\left(x^{\star} \mid x\right)\right) d x^{\star}\right\} \delta_x(y) \\
+& =q(y \mid x) \alpha(y \mid x)+\left\{1-\int q\left(x^{\star} \mid x\right) \alpha\left(x^{\star} \mid x\right) d x^{\star}\right\} \delta_x(y) \\
+& =q(y \mid x) \alpha(y \mid x)+\{1-a(x)\} \delta_x(y) .
+\end{aligned}
+$$
+\subsection{Reversibility}
+The Metropolis-Hastings kernel $K$ is $\pi$-reversible and thus admits $\pi$ as invariant distribution.
+
+\subsection{Proof}
+For any $x, y \in \mathbb{X}$, with $x \neq y$
+$$
+\begin{aligned}
+\pi(x) K(x, y) & =\pi(x) q(y \mid x) \alpha(y \mid x) \\
+& =\pi(x) q(y \mid x)min\left(1 \wedge \frac{\pi(y) q(x \mid y)}{\pi(x) q(y \mid x)}\right) \\
+& =min (\pi(x) q(y \mid x) \wedge \pi(y) q(x \mid y)) \\
+& =\pi(y) q(x \mid y)min\left(\frac{\pi(x) q(y \mid x)}{\pi(y) q(x \mid y)} \wedge 1\right)=\pi(y) K(y, x) .
+\end{aligned}
+$$
+
+If $x=y$, then obviously $\pi(x) K(x, y)=\pi(y) K(y, x)$.
+
+\subsection{Aperiodicity}
+The $\mathrm{MH}$ chain is aperiodic if it always has a non-zero chance of staying where it is. (Chance to reject)
+
+\subsection{Irreducibility}
+If $q\left(x^{\star} \mid x\right)>0$ for any $x, x^{\star} \in \operatorname{supp}(\pi)$ then the Metropolis-Hastings chain is irreducible, in fact every state can be reached in a single step (strongly irreducible).
+
+\subsection{LLN for MH}
+If the Markov chain generated by the Metropolis-Hastings sampler is \textbf{$\pi$-irreducible}, then we have for any integrable function $\phi: \mathbb{X} \rightarrow \mathbb{R}:$
+$$
+\lim _{t \rightarrow \infty} \frac{1}{t} \sum_{i=1}^t \phi\left(X^{(i)}\right)=\int_{\mathbb{X}} \phi(x) \pi(x) d x
+$$
+for every starting value $X^{(1)}$.
+
+\subsubsection{Condition for ergodicity}
+$q\left(x^{\star} \mid x\right)>0$ for any $x, x^{\star} \in \operatorname{supp}(\pi)$ 
+
+\subsection{IMH (Independent MH)}
+\subsubsection{Independent proposal} 
+A proposal distribution $q\left(x^{\star} \mid x\right)$ which does not depend on $x$.
+
+\subsubsection{Acceptance probability }
+$$
+\alpha\left(x^{\star} \mid x\right)=\min \left(1, \frac{\pi\left(x^{\star}\right) q(x)}{\pi(x) q\left(x^{\star}\right)}\right) .
+$$
+\subsubsection{Example}
+Multivariate normal or student's $t$ distribution.
+
+\subsubsection{Condition for Ergodicity}
+\begin{itemize}
+    \item If $\pi(x) / q(x)<M$ for all $x$ and some $M<\infty$, then the chain is uniformly ergodic.
+    \item The expected acceptance probability at stationarity is at least $1 / M$
+
+\end{itemize}
+
+\subsubsection{Choosing a good proposal}
+Goal: Small Correlation
+\begin{itemize}
+    \item Two sources of correlation:
+    \begin{itemize}
+        \item between the current state $X^{(t-1)}$ and proposed value $X \sim q\left(\cdot \mid X^{(t-1)}\right)$
+        \item correlation induced if $X^{(t)}=X^{(t-1)}$, if proposal is rejected.
+    \end{itemize}
+\end{itemize}
+\textbf{Trade-off:}
+\begin{itemize}
+    \item  Trade-off there is a compromise between:
+    \begin{itemize}
+        \item  proposing large moves
+        \item obtaining a decent acceptance probability.
+        \item For multivariate distributions: covariance of proposal should reflect the covariance structure of the target.
+    \end{itemize}
+\end{itemize}
+
+
+\subsection{RWM (Random Walk Metropolis)}
+\subsubsection{Proposal} 
+In the Metropolis-Hastings, pick $q\left(x^{\star} \mid x\right)=g\left(x^{\star}-x\right)$ with $g$ being a symmetric distribution, thus
+$$
+X^{\star}=X+\varepsilon, \quad \varepsilon \sim g ;
+$$
+e.g. $g$ is a zero-mean multivariate normal or $t$ distribution.
+\subsubsection{Acceptance probability }
+Acceptance probability becomes
+$$
+\alpha\left(x^{\star} \mid x\right)=\min \left(1, \frac{\pi\left(x^{\star}\right)}{\pi(x)}\right) .
+$$ ($q$ is symmetric and therefore cancels)
+
+We accept...
+- a move to a more probable state with probability 1 ;
+- a move to a less probable state with probability
+$$
+\pi\left(x^{\star}\right) / \pi(x) \leq 1 .
+$$
+\subsubsection{Example}
+Target distribution, we want to sample from
+$$
+\pi(x)=\mathcal{N}\left(x ;\binom{0}{0},\left(\begin{array}{cc}
+1 & 0.5 \\
+0.5 & 1
+\end{array}\right)\right) .
+$$
+
+We use a random walk Metropolis algorithm with
+$$
+g(\varepsilon)=\mathcal{N}\left(\varepsilon ;\binom{0}{0}, \sigma^2\left(\begin{array}{ll}
+1 & 0 \\
+0 & 1
+\end{array}\right)\right) .
+$$
+- What is the optimal choice of $\sigma^2$ ?
+- We consider three choices: $\sigma^2=0.1^2, 1,10^2$.
+\subsubsection{Condition for Ergodicity}
+Not given in the notes or slides
+
+\begin{itemize}
+    \item \textbf{Aperiodicity}: The Markov chain must not exhibit periodic behavior, which can typically be ensured if the proposal distribution allows the possibility of staying at the current state.
+    \item \textbf{Irreducibility}: The chain must be able to reach any state from any other state, possibly in multiple steps, ensuring the entire state space can be explored.
+    \item \textbf{Positive Recurrence}: The chain must return to any state infinitely often on average, preventing it from drifting off to infinity.
+\end{itemize}
+
+\begin{itemize}
+    \item \textbf{Choice of Proposal Distribution}: Ensure the proposal distribution has support over the entire state space, allowing any state to be proposed from any other state.
+    \item \textbf{Adaptation of Step Size}: Choose an appropriate step size for the proposal distribution to balance exploration and acceptance rate, promoting aperiodicity and irreducibility.
+    \item \textbf{Initial State}: Start the chain from a region of high probability in the target distribution to improve practical convergence rates.
+\end{itemize}
+
+\subsubsection{Choosing a good proposal}
+Cooking recipe: run the algorithm for $T$ iterations, check some criterion, tune the proposal distribution accordingly, run the algorithm for $T$ iterations again ...
+
+
+\subsection{MALA (Metropolis-Adjusted MA)}
+
+\subsubsection{Unadjusted Langevin algorithm (ULA)}
+$$
+X^{(t)}=X^{(t-1)}+\frac{\sigma}{2} \nabla \log \pi\left(X^{(t-1)}\right)+\sigma W
+$$
+where $W \sim \mathcal{N}\left(0, I_d\right)$. \textbf{However, $\pi$ is not invariant distribution.}
+
+\paragraph{Langevin diffusion}
+$$
+d X_t=\frac{1}{2} \nabla \log \pi\left(X_t\right) d t+d B_t
+$$
+has $\pi$ as a stationary distribution (if $\pi$ is suitably smooth).
+
+\subsubsection{Metropolis-adjusted Langevin algorithm (MALA)}
+(Roberts and Tweedie, 1996) uses ULA as the proposal:
+$$
+X^{\star}=X^{(t-1)}+\frac{\sigma}{2} \nabla \log \pi\left(X^{(t-1)}\right)+\sigma W
+$$
+so the Metropolis-Hastings acceptance ratio is
+$$
+\frac{\pi\left(X^{\star}\right)}{\pi\left(X^{(t-1)}\right)} \frac{\mathcal{N}\left(X^{(t-1)} ; X^{\star}+\frac{\sigma}{2} \cdot \nabla \log \pi\left(X^{\star}\right) ; \sigma^2\right)}{\mathcal{N}\left(X^{\star} ; X^{(t-1)}+\frac{\sigma}{2} \cdot \nabla \log \pi\left(X^{(t-1)}\right) ; \sigma^2\right)} .
+$$
+
+\subsection{Randomised proposals}
+\subsubsection{Motivation / Intuition (1:1 from slides but makes sense to me)}
+Assume you want to use $q_{\sigma^2}\left(X^{\star} \mid X^{(t-1)}\right)=\mathcal{N}\left(X ; X^{(t-1)}, \sigma^2\right)$ but you don't know how to pick $\sigma^2$. You decide to pick a random $\sigma^{2, \star}$ from a distribution $f\left(\sigma^2\right)$ :
+$$
+\sigma^{2, \star} \sim f\left(\sigma^{2, \star}\right), X^{\star} \mid \sigma^{2, \star} \sim q_{\sigma^{2, \star}}\left(\cdot \mid X^{(t-1)}\right)
+$$
+so that
+$$
+q\left(X^{\star} \mid X^{(t-1)}\right)=\int q_{\sigma^{2, \star}}\left(X^{\star} \mid X^{(t-1)}\right) f\left(\sigma^{2, \star}\right) d \sigma^{2, \star} .
+$$
+
+Perhaps $q\left(X^{\star} \mid X^{(t-1)}\right)$ cannot be evaluated, e.g. the above integral is \textbf{intractable}. Hence the acceptance probability
+$$
+\min \left\{1, \frac{\pi\left(X^{\star}\right) q\left(X^{(t-1)} \mid X^{\star}\right)}{\pi\left(X^{(t-1)}\right) q\left(X^{\star} \mid X^{(t-1)}\right)}\right\}
+$$
+cannot be computed.
+Instead you decide to accept your proposal with probability
+$$
+\alpha_t=\min \left\{1, \frac{\pi\left(X^{\star}\right) q_{\sigma^{2,(t-1)}}\left(X^{(t-1)} \mid X^{\star}\right)}{\pi\left(X^{(t-1)}\right) q_{\sigma^{2, \star}}\left(X^{\star} \mid X^{(t-1)}\right)}\right\}
+$$
+where\textbf{ $\sigma^{2,(t-1)}$ corresponds to parameter of the last accepted proposal.}
+
+With probability $\alpha_t$, set $\sigma^{2,(t)}=\sigma^{2, \star}, X^{(t)}=X^{\star}$, otherwise $\sigma^{2,(t)}=\sigma^{2,(t-1)}, X^{(t)}=X^{(t-1)}$
+
+\subsubsection{Extended Targets}
+Consider the extended target
+$$
+\tilde{\pi}\left(x, \sigma^2\right):=\pi(x) f\left(\sigma^2\right) .
+$$
+
+Previous algorithm is a Metropolis-Hastings of target $\tilde{\pi}\left(x, \sigma^2\right)$ and proposal
+$$
+q\left(y, \tau^2 \mid x, \sigma^2\right)=f\left(\tau^2\right) q_{\tau^2}(y \mid x)
+$$
+\subsubsection{Proof}
+Indeed, we have
+$$
+\begin{aligned}
+& \frac{\widetilde{\pi}\left(y, \tau^2\right)}{\widetilde{\pi}\left(x, \sigma^2\right)} \frac{q\left(x, \sigma^2 \mid y, \tau^2\right)}{q\left(y, \tau^2 \mid x, \sigma^2\right)} \\
+& =\frac{\pi(y) f\left(\tau^2\right)}{\pi(x) f\left(\sigma^2\right)} \frac{f\left(\sigma^2\right) q_{\sigma^2}(x \mid y)}{f\left(\tau^2\right) q_{\tau^2}(y \mid x)}=\frac{\pi(y)}{\pi(x)} \frac{q_{\sigma^2}(x \mid y)}{q_{\tau^2}(y \mid x)}
+\end{aligned}
+$$
+
+Remark: we just need to be able to sample from $f(\cdot)$, not to evaluate it.
+
+\subsection{Transformations of proposals}
+In my opinion way too short on the slides and notes, not very clear.
+
+
+Assume you want to sample from a target $\pi$ with $\operatorname{supp}(\pi) \subset \mathbb{R}^{+}$, e.g. the posterior distribution of a variance/scale parameter.
+Any proposed move, e.g. using a normal random walk, to $\mathbb{R}^{-}$ is a waste of time.
+Given $X^{(t-1)}$, propose $X^{\star}=\exp \left(\log X^{(t-1)}+\epsilon\right)$ with $\epsilon \sim \mathcal{N}\left(0, \sigma^2\right)$. What is the acceptance probability then?
+$$
+\begin{aligned}
+\alpha\left(X^{\star} \mid X^{(t-1)}\right) & =\min \left(1, \frac{\pi\left(X^{\star}\right)}{\pi\left(X^{(t-1)}\right)} \frac{q\left(X^{(t-1)} \mid X^{\star}\right)}{q\left(X^{\star} \mid X^{(t-1)}\right)}\right) \\
+& =\min \left(1, \frac{\pi\left(X^{\star}\right)}{\pi\left(X^{(t-1)}\right)} \frac{X^{\star}}{X^{(t-1)}}\right) .
+\end{aligned}
+$$
+
+Why?
+$$
+\frac{q(y \mid x)}{q(x \mid y)}=\frac{\frac{1}{y \sigma \sqrt{2 \pi}} \exp \left[-\frac{(\log y-\log x)^2}{2 \sigma^2}\right]}{\frac{1}{x \sigma \sqrt{2 \pi}} \exp \left[-\frac{(\log x-\log y)^2}{2 \sigma^2}\right]}=\frac{x}{y} .
+$$
+\section{Manipulation of MCMC Kernels}
+\subsection{Composition of MCMC Kernels}
+\subsubsection{Gibbs sampling as composition of MH Kernels}
+Systematic Gibbs sampling corresponds to a composition of Metropolis-Hastings kernels where for any $j=1, \ldots, d$
+$$
+q\left(x_j^{\prime} \mid x_1, \ldots, x_d\right):=\pi_{X_j \mid X_{-j}}\left(x_j^{\prime} \mid x_{-j}\right) .
+$$
+\paragraph{Proof}
+Proof. It is sufficient to establish that the acceptance rate $\alpha_j$ is equal to 1 , in order to prove this result. We have
+$$
+\begin{aligned}
+& \frac{\pi\left(x_1, \ldots, x_{j-1}, x_j^{\prime}, x_{j+1}, \ldots, x_d\right) q\left(x_j \mid x_1, \ldots, x_{j-1}, x_j^{\prime}, x_{j+1}, \ldots, x_d\right)}{\pi\left(x_1, \ldots, x_d\right) q\left(x_j^{\prime} \mid x_1, \ldots, x_d\right)} \\
+& =\frac{\pi\left(x_1, \ldots, x_{j-1}, x_j^{\prime}, x_{j+1}, \ldots, x_d\right) \pi_{X_j \mid X_{-j}}\left(x_j \mid x_{-j}\right)}{\pi\left(x_1, \ldots, x_d\right) \pi_{X_j \mid X_{-j}}\left(x_j^{\prime} \mid x_{-j}\right)}
+\end{aligned}
+$$
+but
+$$
+\begin{aligned}
+\pi\left(x_1, \ldots, x_{j-1}, x_j^{\prime}, x_{j+1}, \ldots, x_d\right) & =\pi\left(x_{-j}\right) \pi_{X_j \mid X_{-j}}\left(x_j^{\prime} \mid x_{-j}\right) \\
+\pi\left(x_1, \ldots, x_d\right) & =\pi\left(x_{-j}\right) \pi_{X_j \mid X_{-j}}\left(x_j \mid x_{-j}\right)
+\end{aligned}
+$$
+so
+$$
+\begin{aligned}
+& \frac{\pi\left(x_1, \ldots, x_{j-1}, x_j^{\prime}, x_{j+1}, \ldots, x_d\right) \pi_{X_j \mid X_{-j}}\left(x_j \mid x_{-j}\right)}{\pi\left(x_1, \ldots, x_d\right) \pi_{X_j \mid X_{-j}}\left(x_j^{\prime} \mid x_{-j}\right)} \\
+& =\frac{\pi\left(x_{-j}\right) \pi_{X_j \mid X_{-j}}\left(x_j^{\prime} \mid x_{-j}\right) \pi_{X_j \mid X_{-j}}\left(x_j \mid x_{-j}\right)}{\pi\left(x_{-j}\right) \pi_{X_j \mid X_{-j}}\left(x_j \mid x_{-j}\right) \pi_{X_j \mid X_{-j}}\left(x_j^{\prime} \mid x_{-j}\right)}=1
+\end{aligned}
+$$
+
+So the result follows.
+\subsection{Cycle Proposals}
+\subsubsection{Cooking Recipe}
+Starting with $X^{(1)}$ iterate for $t=2,3, \ldots$
+1. Set $Z^{(t, 0)}:=X^{(t-1)}$.
+2. For $j=1, \ldots, p$, sample $Z^{(t, j)} \sim K_j\left(Z^{(t, j-1)}, \cdot\right)$.
+3. Set $X^{(t)}:=Z^{(t, p)}$.
+
+Full cycle transition kernel is
+$$
+\begin{aligned}
+K(x, y) & =\int \cdots \int K_1\left(x, z_1\right) K_2\left(z_1, z_2\right) \\
+& \cdots K_p\left(z_{p-1}, y\right) \mathrm{d} z_1 \cdots \mathrm{d} z_p .
+\end{aligned}
+$$
+$K$ is $\pi$-invariant.
+
+\subsection{Mixture Proposals}
+\subsubsection{Cooking Recipe}
+Starting with $X^{(1)}$ iterate for $t=2,3, \ldots$
+1. Sample $J$ from $\{1, \ldots, p\}$ with $\mathbb{P}(J=k)=\beta_k$.
+2. Sample $X^{(t)} \sim K_J\left(X^{(t-1)}, \cdot\right)$.
+
+Corresponding transition kernel is
+$$
+K(x, y)=\sum_{j=1}^p \beta_j K_j(x, y) .
+$$
+$K$ is $\pi$-invariant.
+The algorithm is different from using a mixture proposal
+$$
+q\left(x^{\prime} \mid x\right)=\sum_{j=1}^p \beta_j q_j\left(x^{\prime} \mid x\right)
+$$
+
+\subsection{MH for Mutlivariate Targets}
+\begin{itemize}
+    \item If $\operatorname{dim}(\mathbb{X})$ is large, it might be very difficult to design a "good" proposal $q\left(x^{\prime} \mid x\right)$.
+    \item As in Gibbs sampling, we might want to partition $x$ into $x=\left(x_1, \ldots, x_d\right)$ and denote $x_{-j}:=x \backslash\left\{x_j\right\}$.
+    \item Propose "local" proposals where only $x_j$ is updated
+$$
+q_j\left(x^{\prime} \mid x\right)=\underbrace{q_j\left(x_j^{\prime} \mid x\right)}_{\text {propose new component } j} \underbrace{\delta_{x_{-j}}\left(x_{-j}^{\prime}\right)}_{\text {keep other components fixed }} .
+$$
+\end{itemize}
+
+\subsubsection{Acceptance Probability}
+$\begin{aligned} \alpha_j\left(x, x^{\prime}\right) & =\min \left(1, \frac{\pi\left(x_{-j}^{\prime}, x_j^{\prime}\right) q_j\left(x_j \mid x_{-j}, x_j^{\prime}\right)}{\pi\left(x_{-j}, x_j\right) q_j\left(x_j^{\prime} \mid x_{-j}, x_j\right)} \frac{\delta_{x_{-j}^{\prime}}\left(x_{-j}\right)}{\delta_{x_{-j}\left(x_{-j}^{\prime}\right)}}\right) \\ & =\min \left(1, \frac{\pi\left(x_{-j}, x_j^{\prime}\right) q_j\left(x_j \mid x_{-j}, x_j^{\prime}\right)}{\pi\left(x_{-j}, x_j\right) q_j\left(x_j^{\prime} \mid x_{-j}, x_j\right)}\right) \\ & =\min \left(1, \frac{\pi_{X_j \mid x_{-j}}\left(x_j^{\prime} \mid x_{-j}\right) q_j\left(x_j \mid x_{-j}, x_j^{\prime}\right)}{\pi_{X_j \mid X_{-j}}\left(x_j \mid x_{-j}\right) q_j\left(x_j^{\prime} \mid x_{-j}, x_j\right)}\right)\end{aligned}$
+
+
+\subsubsection{Cycle and Mixtures of MH}
+The systematic Gibbs sampler is a cycle of one-at-a time MH whereas the random scan Gibbs sampler is a mixture of one-at-a time MH where
+$$
+q_j\left(x_j^{\prime} \mid x\right)=\pi_{X_j \mid x_{-j}}\left(x_j^{\prime} \mid x_{-j}\right) .
+$$
+
+\subsubsection{Proof}
+It follows from
+$$
+\begin{aligned}
+& \frac{\pi\left(x_{-j}, x_j^{\prime}\right)}{\pi\left(x_{-j}, x_j\right)} \frac{q_j\left(x_j \mid x_{-j}, x_j^{\prime}\right)}{q_j\left(x_j^{\prime} \mid x_{-j}, x_j\right)} \\
+& =\frac{\pi\left(x_{-j}\right) \pi_{X_j \mid x_{-j}}\left(x_j^{\prime} \mid x_{-j}\right)}{\pi\left(x_{-j}\right) \pi_{X_j \mid X_{-j}}\left(x_j \mid x_{-j}\right)} \frac{\pi_{X_j \mid X_{-j}}\left(x_j \mid x_{-j}\right)}{\pi_{X_j \mid X_{-j}}\left(x_j^{\prime} \mid x_{-j}\right)}=1 .
+\end{aligned}
+$$
+
+
+\end{document}
