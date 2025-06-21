@@ -1,0 +1,116 @@
+\documentclass{article}
+\usepackage{amsmath, amssymb}
+\usepackage{geometry}
+\geometry{a4paper, margin=1in}
+\pagestyle{empty}
+
+% A command for the pi_0 symbol
+\newcommand{\piO}{\pi_0}
+\newcommand{\hatpiO}{\hat{\pi}_0}
+
+\begin{document}
+
+\section*{The q-value: A Practitioner's Guide to FDR}
+
+\subsection*{1. The Challenge: From Single Tests to "-Omics"}
+\begin{itemize}
+    \item Classical epidemiology tested a few, pre-specified hypotheses.
+    \item Modern "-omics" (genomics, proteomics, etc.) test thousands ($m$) of hypotheses simultaneously.
+    \item The objective is often \textbf{exploratory discovery} (generating a list of promising candidates) rather than confirmatory proof.
+    \item Testing many hypotheses inflates the probability of getting false positives (Type I errors) by pure chance. This is the \textbf{multiple hypothesis testing problem}.
+\end{itemize}
+
+\subsection*{2. Error Control Frameworks}
+\subsubsection*{Family-Wise Error Rate (FWER)}
+\begin{itemize}
+    \item \textbf{Definition:} The probability of making \textbf{at least one} false positive discovery ($V$).
+    $$ \text{FWER} = P(V \ge 1) $$
+    \item \textbf{Inflation:} For $m$ independent tests at significance level $\alpha$, the FWER inflates rapidly:
+    $$ \text{FWER} = 1 - (1-\alpha)^m $$
+    For $m=50$ tests at $\alpha=0.05$, the FWER is 92.3\%, making false positives almost certain.
+    \item The Bonferroni correction sets a new, strict significance threshold: $p_i \le \alpha/m$.
+    \item \textbf{Drawback:} Extremely conservative. \textbf{Intuition:} It assumes the "worst-case" scenario where just one false positive would invalidate the entire study, which is often not the goal in large-scale discovery. This strictness leads to many missed discoveries (high false negatives).
+\end{itemize}
+
+\subsubsection*{False Discovery Rate (FDR)}
+\begin{itemize}
+    \item \textbf{Definition:} The \textbf{expected proportion} of false positives ($V$) among all discoveries made ($R$). The proportion itself is the False Discovery Proportion, $Q$.
+    $$ Q = \frac{V}{R} \quad (\text{with } Q=0 \text{ if } R=0), \qquad \text{FDR} = E[Q] $$
+    \item  A paradigm shift better suited for discovery. \textbf{Intuition:} An FDR of 5\% means you accept that, on average, 5\% of the genes/proteins on your "significant" list will be false leads, which is a reasonable trade-off to discover the other 95\%.
+    \item \textbf{Control (Benjamini-Hochberg, 1995):} A powerful step-up algorithm.
+    \begin{enumerate}
+        \item Order your $m$ p-values: $p_{(1)} \le p_{(2)} \le \dots \le p_{(m)}$.
+        \item Find the largest rank $k$ such that:
+        $$ p_{(k)} \le \frac{k}{m}\alpha $$
+        \item Reject all null hypotheses $H_{(1)}, \dots, H_{(k)}$.
+    \end{enumerate}
+    \item \textbf{Limitation:} It's powerful, but conservatively assumes that all tested hypotheses are null ($\piO = 1$).
+\end{itemize}
+
+\subsection*{3. The q-value: A More Powerful FDR Measure}
+\begin{itemize}
+    \item An FDR analogue to the p-value. The q-value is a measure of significance in terms of the FDR.
+    \item \textbf{Definition}The q-value of a test is the minimum FDR at which that test could be called significant.
+    $$ q(p_i) = \min_{\{\text{thresholds } t \ge p_i\}} \left\{ E\left[ \frac{V(t)}{R(t)} \mid R(t)>0 \right] \right\} $$
+    \item \textbf{Key Ingredient for Power ($\piO$):} The q-value method gains power by estimating $\piO$, the proportion of truly null hypotheses, from the data.
+    \item \textbf{Intuition for $\piO$ estimation:} P-values from true nulls should be uniformly distributed (a flat histogram), while p-values from true effects cluster near zero. The flat part of the p-value histogram can be used to estimate the "background" proportion of nulls. The formula is:
+    $$ \hatpiO(\lambda) = \frac{\#\{p_i > \lambda\}}{m(1-\lambda)} \quad (\text{e.g., for } \lambda=0.5) $$
+    A spline smoother is used to get a stable estimate as $\lambda \to 1$.
+    \item \textbf{Estimation Algorithm:}
+        \begin{enumerate}
+            \item Estimate $\hatpiO$ from the distribution of all $m$ p-values.
+            \item For each ordered p-value $p_{(i)}$, calculate an initial q-value: $\hat{q}_{\text{init}}(p_{(i)}) = \frac{\hatpiO \cdot m \cdot p_{(i)}}{i}$.
+            \item Enforce monotonicity to get the final q-value: $\hat{q}(p_{(i)}) = \min_{j \ge i} \left\{\hat{q}_{\text{init}}(p_{(j)})\right\}$.
+        \end{enumerate}
+    \item \textbf{Result:} By using a realistic $\hatpiO < 1$, the q-value method is inherently more powerful than the B-H procedure.
+\end{itemize}
+
+\subsection*{4. A Practical Example}
+Imagine we test 5 genes and get the following p-values. We want to control error at $\alpha=0.05$. Assume we estimate $\hatpiO=0.8$.
+
+\begin{tabular}{l|c|cccc}
+\hline
+\textbf{Gene} & \textbf{Raw p-value} & \textbf{Rank (i)} & \textbf{Bonferroni ($\le 0.05$)} & \textbf{B-H ($\le \frac{i}{5} \times 0.05$)} & \textbf{q-value ($\le 0.05$)} \\
+\hline
+Gene A & 0.003 & 1 & $0.015$ (\textbf{Sig}) & $0.003 \le 0.010$ (\textbf{Sig}) & $0.012$ (\textbf{Sig}) \\
+Gene B & 0.012 & 2 & $0.060$ (Not Sig) & $0.012 \le 0.020$ (\textbf{Sig}) & $0.024$ (\textbf{Sig}) \\
+Gene C & 0.020 & 3 & $0.100$ (Not Sig) & $0.020 \le 0.030$ (\textbf{Sig}) & $0.027$ (\textbf{Sig}) \\
+Gene D & 0.045 & 4 & $0.225$ (Not Sig) & $0.045 \not\le 0.040$ (Not Sig) & $0.072$ (Not Sig) \\
+Gene E & 0.650 & 5 & $1.000$ (Not Sig) & $0.650 \not\le 0.050$ (Not Sig) & $0.800$ (Not Sig) \\
+\hline
+\end{tabular}
+
+\textbf{Conclusion:}
+\begin{itemize}
+    \item \textbf{Bonferroni:} Declares 1 gene significant.
+    \item \textbf{Benjamini-Hochberg:} Declares 3 genes significant (A, B, C). It stops at Gene D because $0.045$ is not less than its threshold of $0.04$.
+    \item \textbf{q-value (at 0.05):} Also declares 3 genes significant. The q-values provide a direct FDR estimate for each finding. For Gene C, $q=0.027$ means that if we set our significance threshold here, we expect 2.7\% of our 3 discoveries to be false.
+\end{itemize}
+
+
+\subsection*{5. A Guide for Practice: Essential Sense Checks}
+\begin{itemize}
+    \item \textbf{1. Check the p-value histogram:} This is your most important diagnostic tool.
+    \begin{itemize}
+        \item \textit{What you want to see:} A sharp spike near zero (the signal from true alternatives) and a relatively flat distribution for p-values from ~0.4 to 1.0 (the "sea of nulls" behaving as expected).
+        \item \textit{Red flags:} A U-shaped distribution suggests anticorrelated tests or a misspecified null model. A spike near 1 suggests incorrect model specification. A sparse or lumpy histogram can indicate problems with low-powered tests or data artifacts.
+    \end{itemize}
+    \item \textbf{2. Check the $\hatpiO$ estimate:}
+    \begin{itemize}
+        \item The estimate should be interpretable, $\hatpiO \in [0, 1]$.
+        \item If $\hatpiO$ is very low (e.g., < 0.5), it implies a massive amount of signal in your data. This is rare but possible. It could also indicate that your null model is incorrect and is producing p-values that are systematically too small.
+        \item If the automated procedure gives $\hatpiO > 1$, it should be capped at 1. This can happen with small $m$ or by chance when there is no signal.
+    \end{itemize}
+    \item \textbf{3. Understand Test Dependency:}
+    \begin{itemize}
+        \item The standard BH and Storey's q-value methods assume independence or a specific type of positive dependence (PRDS), which holds for many applications (like gene expression).
+        \item If you have strong, arbitrary, or negative correlations, these methods may not perfectly control the FDR. In such cases, a more conservative method like the Benjamini-Yekutieli (BY) procedure should be considered.
+    \end{itemize}
+     \item \textbf{4. Define your "Family of Tests" Thoughtfully:}
+    \begin{itemize}
+        \item The value of $m$ is critical. You must decide what constitutes the "family" of hypotheses for which you are correcting. Is it all genes on a chip? All SNPs in a genome? All correlations in a table? This decision defines the scope of your discovery claim and should be made transparently.
+    \end{itemize}
+\end{itemize}
+
+
+\end{document}

@@ -1,0 +1,249 @@
+\documentclass[11pt]{article}
+
+% --- PACKAGES ---
+\usepackage[a4paper, margin=1in]{geometry}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{tcolorbox}
+
+% --- HYPERLINK SETUP ---
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,      
+    urlcolor=cyan,
+    citecolor=red,
+}
+
+% --- CODE LISTING STYLE (FOR R) ---
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.95}
+
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=left,                    
+    numbersep=5pt,                  
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    language=R
+}
+\lstset{style=mystyle}
+
+% --- CUSTOM COMMAND FOR 'NOTE' ---
+% This creates a shaded box for the "Note" sections
+\newtcolorbox{notebox}{colback=blue!5!white, colframe=blue!75!black, fonttitle=\bfseries, title=Note}
+
+% --- DOCUMENT START ---
+\begin{document}
+
+\title{A Statistician's Practical Guide to E-values in Epidemiology}
+\author{A Guide for Applied Researchers}
+\date{\today}
+\maketitle
+
+\section*{The Problem: Peeking at Your Cohort Study Data}
+
+We've all been there. You're running a multi-year cohort study. The data is trickling in. A junior researcher, a funder, or even your own curiosity tempts you to run an analysis. You see a p-value of 0.07. It's ``trending.'' The temptation is to enroll more participants or just keep the study running, hoping the p-value dips below that magic 0.05 threshold.
+
+The problem is that this common and practical act of ``peeking'' invalidates the p-value. Its statistical guarantees hold only if you fix the sample size in advance and analyze the data just once. If you continuously monitor a p-value, your chance of getting a false positive, even when the null is true, inflates towards 100\%. This creates a conflict between sound research management and sound statistical inference. E-values are designed to solve this exact problem.
+
+\section*{The Foundation: What is an E-value?}
+
+Before we go further, let's clear up a major point of confusion. The term ``e-value'' means different things. This guide is about the \textbf{statistical e-value} for hypothesis testing.
+
+\begin{notebox}
+The \textbf{epidemiological E-value} (for confounding) is a different, though complementary, tool for sensitivity analysis. The \textbf{bioinformatics E-value} (in BLAST) is also completely different. We are focused on the statistical e-value that helps with significance testing.
+\end{notebox}
+
+At its core, a statistical e-value is a measure of evidence against a null hypothesis.
+
+\paragraph{Definition:} An e-value is a non-negative random variable $E$ where, if the null hypothesis is true, its expected value is at most 1.
+$$ \mathbb{E}[E] \le 1 $$
+
+\paragraph{Intuition: The Betting Analogy}
+This is the most intuitive way to think about it. Imagine you are betting against the null hypothesis. You start with \$1. The e-value is your payoff. The rule $\mathbb{E}[E] \le 1$ means the bet is structured to be fair or unfavorable to you if the null is true. You don't \textit{expect} to make money.
+
+If you run your study and end up with an e-value of 20, it's like turning your initial \$1 into \$20. This 20-to-1 payoff is strong evidence that the ``rules of the game'' (the null hypothesis) are likely wrong. Large e-values are evidence \textit{against} the null.
+
+\paragraph{Connecting E-values and P-values}
+You can easily convert an e-value into a p-value. Thanks to Markov's inequality, for any significance level $\alpha$:
+$$ P(E \ge 1/\alpha) \le \alpha $$
+This means that $1/E$ is a valid, if sometimes conservative, p-value. To declare significance at the $\alpha = 0.05$ level, you look for an e-value $E \ge 1/0.05$, or $E \ge 20$.
+
+\section*{The Mathematical Engine: How to Use E-values}
+The real power of e-values comes from the simple and elegant rules for combining them.
+
+\begin{notebox}
+\textbf{Combining Evidence from Independent Sources (e.g., Sequential Data)}\\
+If you have a sequence of e-values $E_1, E_2, \dots, E_k$ from independent data points or studies, you can simply multiply them to get a new, combined e-value:
+$$ E_{\text{total}} = E_1 \times E_2 \times \dots \times E_k $$
+\textbf{Example:} You run an initial phase of your cohort study and calculate an e-value of 4.5. This isn't significant, but it's promising. You secure funding for a follow-up study on a new group of participants, which yields an e-value of 5.2. Your total evidence is now $4.5 \times 5.2 = 23.4$. Since 23.4 is greater than 20, you can now reject the null at the 0.05 level. This entire procedure is statistically valid.
+\end{notebox}
+
+\begin{notebox}
+\textbf{Combining Evidence from Dependent Sources}\\
+If you have several e-values calculated on the \textit{same dataset} (e.g., from different statistical tests for the same null hypothesis), you cannot multiply them. However, you can take a weighted average. For any set of pre-specified non-negative weights $w_i$ that sum to 1, the combined e-value is:
+$$ E_{\text{total}} = w_1E_1 + w_2E_2 + \dots + w_kE_k $$
+\textbf{Example:} You analyze the same dataset with both a standard log-rank test and a more robust Wilcoxon test, yielding e-values of 12 and 18, respectively. You can pre-specify equal weights (0.5 each) and combine them: $E_{\text{total}} = 0.5 \times 12 + 0.5 \times 18 = 15$. This provides a single measure of evidence robust to your choice of test.
+\end{notebox}
+
+\section*{The Application: Anytime-Valid Inference}
+The real magic happens when we apply these rules sequentially to accumulating data. This is done using an \textbf{e-process}. Think of an e-process as just a running product of e-values, updated every time a new piece of data (like a new event in a trial) comes in.
+$$ E_t = E_1 \times E_2 \times \dots \times E_t $$
+Because of a powerful result called Ville's Inequality, you can monitor this e-process continuously. You can stop at \textit{any time} the e-process crosses your significance threshold (e.g., 20), and your Type-I error rate is still controlled at 5\%. This solves the ``peeking'' problem. The estimation analogue is a \textbf{confidence sequence}, which is a confidence interval that is valid at every single point in time.
+
+\section*{Case Study: A Practical Walkthrough of a Malaria Trial}
+Let's make this concrete. We'll simulate and analyze a malaria prophylaxis trial to see how this works end-to-end.
+
+\subsection*{Step 1: The Scenario}
+We are testing a new drug to prevent malaria. We randomize 500 children to receive the drug or a placebo and follow them for two years. The outcome is the time to the first malaria infection. We want to monitor the trial and stop early if we find strong evidence of efficacy. The true hazard ratio (HR) is 0.6, but the analyst doesn't know this.
+
+\subsection*{Step 2: Simulating the Trial Data in R}
+First, we set up our trial and simulate the time-to-event data.
+\begin{lstlisting}[language=R]
+# Load necessary libraries
+# install.packages(c("safestats", "survival", "ggplot2", "dplyr", "EValue"))
+library(safestats)
+library(survival)
+library(ggplot2)
+library(dplyr)
+library(EValue)
+
+# --- Simulation Setup ---
+set.seed(123)
+n_subjects <- 500
+hr_treat <- 0.6 # The true, unknown effect
+weibull_shape <- 1.5
+weibull_scale <- 0.002
+admin_censor_time <- 730
+
+# --- Generate Cohort Data ---
+cohort_data <- data.frame(
+  id = 1:n_subjects,
+  treatment = rbinom(n_subjects, 1, 0.5),
+  hbe_status = rbinom(n_subjects, 1, 0.1)
+)
+
+lin_pred <- cohort_data$treatment*log(hr_treat) + cohort_data$hbe_status*log(0.8)
+u <- runif(n_subjects)
+true_event_time <- (-log(u) / (weibull_scale * exp(lin_pred)))^(1/weibull_shape)
+
+cohort_data$time <- pmin(true_event_time, admin_censor_time)
+cohort_data$status <- as.numeric(true_event_time <= admin_censor_time)
+
+cat("Total events observed:", sum(cohort_data$status))
+\end{lstlisting}
+
+\subsection*{Step 3: The Anytime-Valid Analysis}
+Now, we analyze the data as if it were arriving sequentially using the `safeLogrankTest` from the `safestats` package.
+\begin{lstlisting}[language=R]
+# Design the test targeting our alternative hypothesis
+design_obj <- designSafeLogrank(hrMin = 0.6, alpha = 0.05)
+
+# Order data by time to simulate real-time arrival
+data_sequential <- cohort_data %>% arrange(time)
+
+# Loop through events as they occur and update the e-process
+event_data <- data_sequential %>% filter(status == 1)
+e_process <- numeric(nrow(event_data))
+cs_lower <- numeric(nrow(event_data))
+cs_upper <- numeric(nrow(event_data))
+
+for (i in 1:nrow(event_data)) {
+  current_time <- event_data$time[i]
+  current_data <- data_sequential %>% filter(time <= current_time)
+  
+  safe_test_result <- safeLogrankTest(
+    formula = Surv(time, status) ~ treatment,
+    data = current_data,
+    designObj = design_obj
+  )
+  
+  e_process[i] <- safe_test_result$eValue
+  cs <- confInt(safe_test_result)
+  cs_lower[i] <- cs$lower
+  cs_upper[i] <- cs$upper
+}
+
+results_df <- data.frame(
+  event_number = 1:nrow(event_data),
+  e_value = e_process,
+  cs_lower = cs_lower,
+  cs_upper = cs_upper
+)
+\end{lstlisting}
+
+\subsection*{Step 4: Interpreting the Results}
+We visualize the e-process and the anytime-valid confidence sequence.
+\\
+\\
+\textit{Note: The following plots would be generated by the R code. Placeholders are used here.}
+% To include the actual plots, run the R code and save the plots as .png files.
+% Then, use \includegraphics[width=\textwidth]{filename.png}
+\begin{figure}[h!]
+    \centering
+    % \includegraphics[width=0.8\textwidth]{e-process-plot.png}
+    \framebox[0.8\textwidth][c]{Placeholder for E-process Plot}
+    \caption{The e-process, showing evidence accumulating over the number of observed events. The horizontal dashed line is the rejection threshold ($E=20$).}
+\end{figure}
+
+The plot shows the e-value growing as events accumulate. It decisively crosses the rejection threshold of 20. This means we could have stopped the trial early, declared success, and accelerated the drug's approval, all while maintaining a 5\% Type-I error rate.
+
+\begin{figure}[h!]
+    \centering
+    % \includegraphics[width=0.8\textwidth]{cs-plot.png}
+    \framebox[0.8\textwidth][c]{Placeholder for Confidence Sequence Plot}
+    \caption{The 95\% anytime-valid confidence sequence for the Hazard Ratio. The interval narrows as more events are observed.}
+\end{figure}
+
+The plot shows the 95\% confidence sequence. Notice how it starts wide and shrinks as we gather more data. At any point during the trial, we could have reported this interval as our current estimate of the HR, and the 95\% coverage guarantee would hold.
+
+\subsection*{Step 5: The Crucial Final Step – Assessing Confounding}
+For an observational study, we must assess robustness to unmeasured confounding using the epidemiological E-value.
+
+\begin{lstlisting}[language=R]
+# Get the final point estimate and CI from our analysis
+final_hr_estimate <- results_df$cs_lower[nrow(results_df)]
+final_ci_high <- results_df$cs_upper[nrow(results_df)]
+
+# Calculate the epidemiological E-value
+# The function call would be:
+# evalue(est = HR(final_hr_estimate, rare = FALSE), hi = final_ci_high)
+\end{lstlisting}
+If the output of this function reports an E-value of 2.56, the interpretation is: ``For an unmeasured confounder to fully explain away our observed hazard ratio, it would need to be associated with both the drug and malaria risk by a hazard ratio of at least 2.56-fold each, above and beyond measured covariates. Weaker confounding cannot account for this result.'' This completes the analysis, giving us a result robust to both random error from ``peeking'' and systematic error from potential confounding.
+
+\section*{Final Recommendations}
+\begin{notebox}
+For any study with interim analyses or a longitudinal design where data accrues over time, prioritize e-processes and confidence sequences over p-values. This aligns your statistics with your study design.
+\end{notebox}
+
+\begin{notebox}
+Report the final e-value and the confidence sequence. This gives a much richer story of how evidence was accumulated than a single, fixed-sample-size p-value.
+\end{notebox}
+
+\begin{notebox}
+Pre-register your analysis plan. While an e-process is valid regardless of when you stop, you should still pre-specify \textit{how} you will calculate it (e.g., which test you'll use) to prevent ``e-hacking.''
+\end{notebox}
+
+\begin{notebox}
+In observational studies, use a dual e-value strategy. First, use the statistical e-process to test your hypothesis and control for random error despite sequential monitoring. Second, use the epidemiological E-value to assess the final estimate's robustness to unmeasured confounding.
+\end{notebox}
+
+\end{document}
