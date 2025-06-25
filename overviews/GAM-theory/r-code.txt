@@ -1,0 +1,851 @@
+# Author: Max M. Lang
+library(mgcv)
+library(gratia)
+library(ggplot2)
+library(dplyr)
+library(stringr)
+library(ggrepel)
+library(ggdist)
+
+
+#' Plot a Single Smooth Term on the Link (Log-Odds) Scale
+#'
+#' This function visualizes the partial effect of a single smooth term from a GAM.
+#' The plot is on the log-odds scale and is centered, meaning it shows the deviation
+#' from the model's intercept. It includes posterior samples, a 95% confidence
+#' interval, and visualizes the magnitude of the smooth's first derivative
+#' through the line width.
+#'
+#' @section Posterior Distribution:
+#' The grey lines are posterior draws of the smooth function. They are generated
+#' by drawing coefficients for the basis functions of the j-th smooth term from
+#' their posterior distribution:
+#' $$ \boldsymbol{\beta}_j^* \sim \text{MVN}(\hat{\boldsymbol{\beta}}_j, \mathbf{V}_{b_j}) $$
+#' where $ \hat{\boldsymbol{\beta}}_j $ are the estimated coefficients for the smooth and
+#' $ \mathbf{V}_{b_j} $ is their covariance matrix. Each draw is used to compute a
+#' sample smooth function: $ f_j^*(x_j) = \sum_{k=1}^{K_j} \beta_{jk}^* b_k(x_j) $.
+#'
+#' @section Plot Scale and Centering:
+#' The Y-axis is on the **log-odds (link) scale**. The smooth is centered,
+#' satisfying a sum-to-zero constraint. This means the partial effect shown is the
+#' deviation from the base-level log-odds (the intercept). A value of 0 on the
+#' y-axis corresponds to the average effect.
+#'
+#' @param gam_to_plot The fitted `gam` or `bam` model object.
+#' @param plot_term A character string specifying the smooth term to plot (e.g., `"s(age)"`).
+#' @param xbreaks A numeric vector for the x-axis tick marks. Defaults to `seq(5, 100, by = 5)`.
+#' @param posterior_draws The number of posterior samples to draw for the visualization.
+#' @param seed_value An integer for the random seed to ensure reproducibility of samples.
+#' @param sampler The sampling method used by `gratia::smooth_samples`. Defaults to `"gaussian"`.
+#' @param burnin_value The burn-in value for the sampler if required.
+#'
+#' @return A `ggplot` object visualizing the partial effect of the specified smooth term.
+
+plot_smooth_term <- function(gam_to_plot, plot_term, xbreaks = seq(5, 100, by = 5), posterior_draws = 1000, seed_value = 43, sampler = "gaussian", burnin_value = 1000){
+  # Extract the variable name from the smooth term string for labeling
+  variable <- str_match_all(plot_term, "s\\((.*?)\\)")[[1]][,2]
+  
+  # Generate samples from the posterior distribution of a single estimated smooth.
+  # This accounts for uncertainty in the basis function coefficients.
+  # The posterior is explicitly: beta*_j ~ MVN(beta_hat_j, V_b_j)
+  smooth_samples <- smooth_samples(gam_to_plot, select = plot_term, n = posterior_draws, seed = seed_value, method = sampler, burnin = burnin_value)
+  
+  # Calculate the first derivative of the point estimate of the smooth.
+  # This is used to vary the line width, indicating steepness.
+  variable_derivative <- derivatives(gam_to_plot, select = plot_term, type = "central",
+                                     order = 1, unconditional = TRUE, interval = "simultaneous")
+  
+  # Calculate the point estimate (the "best guess") of the smooth and its confidence interval.
+  # This does not involve sampling; it's a direct calculation: f_hat_j(x_j) = sum(beta_hat_jk * b_k(x_j))
+  fitted_smooth <- smooth_estimates(gam_to_plot, select = plot_term, unconditional = TRUE) |>
+    add_sizer(derivatives = variable_derivative) |> # Add derivative info for line width
+    add_confint() # Add frequentist confidence interval
+  
+  # Identify the minimum and maximum points of the fitted smooth for annotation.
+  min_max_points <- fitted_smooth |>
+    filter(.estimate == max(.estimate) | .estimate == min(.estimate)) |>
+    mutate(label = if_else(.estimate == max(.estimate),
+                           paste0("Peak at ", round(!!sym(variable), 1)),
+                           paste0("Low at ", round(!!sym(variable), 1))))
+  
+  # Create the ggplot visualization
+  p <- ggplot(fitted_smooth, aes(x = !!sym(variable), y = .estimate)) +
+    # Add the overlay of posterior samples as faint grey lines to show uncertainty
+    geom_line(data = smooth_samples, aes(y = .value, group = .draw),
+              color = "grey85", alpha = 0.5, linewidth = 0.5) +
+    # Add the 95% confidence interval ribbon for the fitted smooth
+    geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci),
+                fill = "firebrick", alpha = 0.2) +
+    # Add annotations for the peak and low points
+    geom_text_repel(data = min_max_points, aes(label = label),
+                    color = "black", nudge_y = 0.5, segment.color = "grey50",
+                    bg.color = "white", bg.r = 0.15) +
+    # Add the main fitted line (point estimate)
+    geom_line() +
+    # Re-plot the fitted line with variable width based on the derivative's magnitude
+    geom_line(data = fitted_smooth %>% dplyr::filter(!is.na(.change)), aes(linewidth = .change), color = "firebrick", lineend = "round") +
+    # Add points to highlight the peak and low
+    geom_point(data = min_max_points, aes(x = !!sym(variable), y = .estimate),
+               color = "blue", size = 4, shape = 18) +
+    # Control the range of the line width
+    scale_linewidth_continuous(range = c(0.3, 2), guide = "none") +
+    scale_x_continuous(breaks = xbreaks) +
+    theme_bw() +
+    theme(plot.subtitle = element_text(size = 9))+
+    labs(
+      title = paste("Partial Effect (Log-Odds) of", variable, "and Outcome"),
+      subtitle = "Fitted smooth with 95% CI. Grey lines are posterior samples. Line width reflects the magnitude of the derivative.",
+      x = variable,
+      y = "Partial Effect (Log-Odds)"
+    )
+  
+  return(p)
+}
+
+
+#' Plot a Centered Smooth Term on the Probability Scale
+#'
+#' This function visualizes the *isolated* partial effect of a smooth term,
+#' transformed to the probability scale. It shows how the probability changes
+#' relative to its average effect. Because the underlying smooth is centered
+#' around 0 on the log-odds scale, this plot will be centered around 50%
+#' probability (`plogis(0) = 0.5`).
+#'
+#' @section Posterior Distribution and Transformation:
+#' Draws are first made from the posterior of the smooth's coefficients:
+#' $$ \boldsymbol{\beta}_j^* \sim \text{MVN}(\hat{\boldsymbol{\beta}}_j, \mathbf{V}_{b_j}) $$
+#' Each resulting smooth draw $ f_j^*(x_j) $ is then transformed to the probability
+#' scale using the inverse link function, without the intercept:
+#' $$ p^*(x_j) = g^{-1}(f_j^*(x_j)) = \text{plogis}(f_j^*(x_j)) $$
+#'
+#' @section Plot Scale and Centering:
+#' The Y-axis is on the **probability scale (0 to 1)**. The plot is **centered around 50%**.
+#' It does *not* show the absolute predicted probability, but rather the relative
+#' contribution of the covariate to the probability.
+#'
+#' @inheritParams plot_smooth_term
+#' @param order_derivative The order of the derivative to compute. Defaults to "1".
+#'
+#' @return A `ggplot` object visualizing the centered partial effect on the probability scale.
+plot_smooth_term_prob <- function(gam_to_plot,
+                                  plot_term,
+                                  xbreaks = seq(5, 100, by = 5),
+                                  posterior_draws = 1000,
+                                  seed_value = 43,
+                                  sampler = "gaussian",
+                                  burnin_value = 1000,
+                                  order_derivative = "1"){
+  variable <- str_match_all(plot_term, "s\\((.*?)\\)")[[1]][,2]
+  
+  # Generating samples from the posterior of a single estimated smooth function
+  # The posterior is: beta*_j ~ MVN(beta_hat_j, V_b_j)
+  smooth_samples <- smooth_samples(gam_to_plot, unconditional = TRUE, select = plot_term, n = posterior_draws, seed = seed_value, method = sampler, burnin = burnin_value) |>
+    # Transform each posterior draw from log-odds to probability scale
+    mutate(.value = plogis(.value))
+  
+  # Take the derivative of the mean estimate of our smooth
+  variable_derivative <- derivatives(gam_to_plot, select = plot_term, type = "central",
+                                     order = order_derivative, unconditional = TRUE, interval = "simultaneous")
+  
+  # Calculate the point estimate of the partial effect: f_j(x) = sum(beta_jk * b_k(x_j))
+  fitted_smooth <- smooth_estimates(gam_to_plot, select = plot_term, unconditional = TRUE) |>
+    add_sizer(derivatives = variable_derivative) |>
+    add_confint() |>
+    # Transform the fitted estimate and its confidence interval to probability
+    mutate(
+      .estimate_prob = plogis(.estimate),
+      .lower_ci_prob = plogis(.lower_ci),
+      .upper_ci_prob = plogis(.upper_ci)
+    )
+  
+  # Find min/max points of the smooth for annotation (using the transformed data)
+  min_max_points <- fitted_smooth |>
+    filter(.estimate_prob == max(.estimate_prob) | .estimate_prob == min(.estimate_prob)) |>
+    mutate(label = if_else(.estimate_prob == max(.estimate_prob),
+                           paste0("Peak at ", round(!!sym(variable), 1), " (P(y=1)=", round(.estimate_prob, 2), ")"),
+                           paste0("Low at ", round(!!sym(variable), 1), " (P(y=1)=", round(.estimate_prob, 2), ")")))
+  
+  # Create the ggplot visualization
+  p <- ggplot(fitted_smooth, aes(x = !!sym(variable), y = .estimate_prob)) +
+    geom_line(data = smooth_samples, aes(y = .value, group = .draw),
+              color = "grey85", alpha = 0.5, linewidth = 0.5) +
+    # Use the probability-scaled CI columns
+    geom_ribbon(aes(ymin = .lower_ci_prob, ymax = .upper_ci_prob),
+                fill = "firebrick", alpha = 0.2) +
+    geom_text_repel(data = min_max_points, aes(label = label),
+                    color = "black", nudge_y = 0.05, segment.color = "grey50",
+                    bg.color = "white", bg.r = 0.15) +
+    geom_line() +
+    geom_line(data = fitted_smooth %>% dplyr::filter(!is.na(.change)), aes(linewidth = .change),
+              color = "firebrick", lineend = "round") +
+    geom_point(data = min_max_points, aes(x = !!sym(variable), y = .estimate_prob),
+               color = "blue", size = 4, shape = 18) +
+    scale_linewidth_continuous(range = c(0.3, 2), guide = "none") +
+    scale_x_continuous(breaks = xbreaks) +
+    # Y-axis scale is now for probability
+    scale_y_continuous(labels = scales::percent_format()) +
+    theme_bw() +
+    theme(plot.subtitle = element_text(size = 9)) +
+    labs(
+      title = paste("Isolated Partial Effect (Probability Scale)", variable, "on the Outcome"),
+      subtitle = "Y-axis shows relative effect: how this variable changes probability compared to its average effect (centered at 50%).\nFitted smooth with 95% CI. Grey lines are posterior samples. Line width reflects derivative magnitude.",
+      x = variable,
+      y = "Isolated Partial Effect (Probability Scale)"
+    )
+  
+  return(p)
+}
+
+
+#' Plot a Smooth Term plus Intercept on the Probability Scale
+#'
+#' This function visualizes the effect of a smooth term on the **absolute predicted
+#' probability**. It achieves this by adding the model's intercept to the smooth
+#' term before transforming to the probability scale. This shows the predicted
+#' probability for the outcome as the covariate changes, assuming all other
+#' covariates in the model are at their reference values (mean for continuous,
+#' base level for categorical).
+#'
+#' @section Difference from `plot_smooth_term_prob`:
+#' The key difference is the inclusion of the intercept (`\hat{\beta}_0`).
+#' - `plot_smooth_term_prob`: plots `plogis(f_j(x_j))`. Centered around 50%. Shows *relative* change.
+#' - `plot_smooth_term_prob_intercept`: plots `plogis(\hat{\beta}_0 + f_j(x_j))`. Centered around the base probability. Shows *absolute* predicted probability.
+#' - Essentially: intercept + s(age) + 0
+#' 
+#' @section Posterior Distribution and Transformation:
+#' Draws are made from the posterior of the smooth's coefficients:
+#' $$ \boldsymbol{\beta}_j^* \sim \text{MVN}(\hat{\boldsymbol{\beta}}_j, \mathbf{V}_{b_j}) $$
+#' The fixed point estimate of the intercept, $ \hat{\beta}_0 $, is added to each
+#' draw before transformation:
+#' $$ p^*(x_j) = g^{-1}(\hat{\beta}_0 + f_j^*(x_j)) = \text{plogis}(\hat{\beta}_0 + f_j^*(x_j)) $$
+#'
+#' @section Plot Scale and Centering:
+#' The Y-axis is on the **absolute probability scale (0 to 1)**. This plot is **not centered**
+#' around 50%; it is centered around the probability determined by the intercept.
+#'
+#' @inheritParams plot_smooth_term_prob
+#'
+#' @return A `ggplot` object visualizing the absolute predicted probability.
+#' 
+plot_smooth_term_prob_intercept <- function(gam_to_plot,
+                                            plot_term,
+                                            xbreaks = seq(5, 100, by = 5),
+                                            posterior_draws = 1000,
+                                            seed_value = 43,
+                                            sampler = "gaussian",
+                                            burnin_value = 1000,
+                                            order_derivative = "1"){
+  variable <- str_match_all(plot_term, "s\\((.*?)\\)")[[1]][,2]
+  variable_derivative <- derivatives(gam_to_plot, select = plot_term, type = "central",
+                                     order = order_derivative, unconditional = TRUE, interval = "simultaneous")
+  
+  # Get the intercept (point estimate) from the fitted model
+  intercept <- coef(gam_to_plot)[1]
+  
+  # Get samples from the posterior of the smooth term
+  # Posterior is: beta*_j ~ MVN(beta_hat_j, V_b_j)
+  posterior_samples <- smooth_samples(gam_to_plot, select = plot_term, n = posterior_draws, seed = seed_value, method = sampler, burnin = burnin_value) |>
+    # Add the FIXED intercept to each draw before transforming to probability scale
+    mutate(.value = plogis(.value + intercept))
+  
+  # Get the point estimate of the smooth
+  fitted_smooth <- smooth_estimates(gam_to_plot, select = plot_term, unconditional = TRUE, overall_uncertainty = T) |>
+    add_sizer(derivatives = variable_derivative) |>
+    add_confint() |>
+    # Add the intercept to the estimate and CI before transforming to probability
+    mutate(
+      .estimate_prob = plogis(.estimate + intercept),
+      .lower_ci_prob = plogis(.lower_ci + intercept),
+      .upper_ci_prob = plogis(.upper_ci + intercept)
+    )
+  
+  # Find min/max points for annotation
+  min_max_points <- fitted_smooth |>
+    filter(.estimate_prob == max(.estimate_prob) | .estimate_prob == min(.estimate_prob)) |>
+    mutate(label = if_else(.estimate_prob == max(.estimate_prob),
+                           paste0("Peak at ", round(!!sym(variable), 1), " (P(y=1)=", round(.estimate_prob, 3), ")"),
+                           paste0("Low at ", round(!!sym(variable), 1), " (P(y=1)=", round(.estimate_prob, 3), ")")))
+  
+  # Create the ggplot visualization
+  p <- ggplot(fitted_smooth, aes(x = !!sym(variable), y = .estimate_prob)) +
+    geom_line(data = posterior_samples, aes(y = .value, group = .draw),
+              color = "grey85", alpha = 0.5, linewidth = 0.5) +
+    geom_ribbon(aes(ymin = .lower_ci_prob, ymax = .upper_ci_prob),
+                fill = "firebrick", alpha = 0.2) +
+    geom_text_repel(data = min_max_points, aes(label = label),
+                    color = "black", nudge_y = 0.05, segment.color = "grey50",
+                    bg.color = "white", bg.r = 0.15) +
+    geom_line() +
+    geom_line(data = fitted_smooth %>% dplyr::filter(!is.na(.change)), aes(linewidth = .change),
+              color = "firebrick", lineend = "round") +
+    geom_point(data = min_max_points, aes(x = !!sym(variable), y = .estimate_prob),
+               color = "blue", size = 4, shape = 18) +
+    scale_linewidth_continuous(range = c(0.3, 2), guide = "none") +
+    scale_x_continuous(breaks = xbreaks) +
+    scale_y_continuous(labels = scales::percent_format()) +
+    theme_bw() +
+    theme(plot.subtitle = element_text(size = 9)) +
+    labs(
+      title = paste("Partial Effect of", variable, "on the Outcome"),
+      subtitle = "Y-axis shows absolute probability: actual predicted probability of a positive outcome.\nOther model variables are held at their reference (categorical) or mean (continuous) values.",
+      x = variable,
+      y = "Predicted Probability"
+    )
+  
+  return(p)
+}
+
+
+#' Plot the First Derivative of a Smooth Term
+#'
+#' This function calculates and plots the first derivative (rate of change) of a
+#' smooth term. This shows how the effect of the covariate is changing at
+#' different points along its range.
+#'
+#' @section Calculation:
+#' The plot shows the point estimate of the first derivative, $ \frac{d\hat{f}_j(x_j)}{dx_j} $,
+#' along with a 95% simultaneous confidence interval. It does not involve posterior sampling.
+#'
+#' @section Plot Scale:
+#' The Y-axis is on the **log-odds rate of change scale**. A value of 0.1 means
+#' that a 1-unit increase in the covariate is associated with a 0.1 increase in
+#' the log-odds of the outcome at that specific point. A value of 0 indicates a
+#' point of inflection (no instantaneous change).
+#'
+#' @inheritParams plot_smooth_term
+#'
+#' @return A `ggplot` object visualizing the first derivative of the smooth.
+plot_smooth_derivative_log_odds <- function(gam_to_plot, plot_term, xbreaks = seq(5, 100, by = 5)){
+  variable <- str_match_all(plot_term, "s\\((.*?)\\)")[[1]][,2]
+  
+  # Calculate the derivative using finite differences. This is a deterministic calculation.
+  variable_derivative <- derivatives(gam_to_plot, select = plot_term, type = "central",
+                                     order = 1, unconditional = TRUE, interval = "simultaneous")
+  
+  # Find min/max points of the derivative for annotation
+  min_max_points <- variable_derivative |>
+    filter(.derivative == max(.derivative) | .derivative == min(.derivative)) |>
+    mutate(label = if_else(.derivative == max(.derivative),
+                           paste0("Peak derivative at ", round(!!sym(variable), 1), " (", round(.derivative, 3), ")"),
+                           paste0("Low derivative at ", round(!!sym(variable), 1), " (", round(.derivative, 3), ")")))
+  
+  p <- ggplot(variable_derivative, aes(x = !!sym(variable), y = .derivative)) +
+    # A reference line at y=0 indicates no change in the smooth's slope
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey50") +
+    geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci),
+                fill = "purple", alpha = 0.2) +
+    geom_line(color = "black", linewidth = 1) +
+    geom_text_repel(data = min_max_points, aes(label = label),
+                    color = "black", nudge_y = 0.1, segment.color = "grey50",
+                    bg.color = "white", bg.r = 0.15) +
+    geom_point(data = min_max_points, aes(x = !!sym(variable), y = .derivative),
+               color = "red", size = 3, shape = 18) +
+    scale_x_continuous(breaks = xbreaks) +
+    theme_bw() +
+    theme(plot.subtitle = element_text(size = 9)) +
+    labs(
+      title = paste("First Derivative of the Smooth of", variable),
+      subtitle = paste("Shows rate of change in log-odds per unit increase in", variable, ". Zero means no effect.\nIntervals are 95% simultaneous CIs. Positive values increase log-odds, negative values decrease them."),
+      x = variable,
+      y = "Rate of Change (Log-odds per unit)"
+    )
+  
+  return(p)
+}
+
+
+#' Plot the Instantaneous Odds Ratio from a Smooth Term
+#'
+#' This function plots the first derivative of a smooth term, but transforms it
+#' by exponentiation to be interpreted as an instantaneous odds ratio.
+#'
+#' @section Calculation and Transformation:
+#' The first derivative, $ d = \frac{d\hat{f}_j(x_j)}{dx_j} $, is calculated first.
+#' This value and its confidence interval are then exponentiated: $ \text{OR} = e^d $.
+#' This gives the multiplicative change in the odds for a one-unit increase in
+#' the covariate at a specific point.
+#'
+#' @section Plot Scale:
+#' The Y-axis is on the **odds ratio scale**. A value of 1 means a 1-unit
+#' increase in the covariate has no effect on the odds at that point. A value of
+#' 2 means the odds double. A value of 0.5 means the odds are halved. The y-axis
+#' is typically log-scaled for better visual interpretation.
+#'
+#' @inheritParams plot_smooth_term
+#'
+#' @return A `ggplot` object visualizing the instantaneous odds ratio.
+plot_smooth_derivative_oddsratio <- function(gam_to_plot, plot_term, xbreaks = seq(5, 100, by = 5)){
+  variable <- str_match_all(plot_term, "s\\((.*?)\\)")[[1]][,2]
+  
+  # Calculate derivative on the log-odds scale
+  variable_derivative <- derivatives(gam_to_plot, select = plot_term, type = "central",
+                                     order = 1, unconditional = TRUE, interval = "simultaneous")
+  
+  # Transform derivatives (log-odds change) to odds ratios by exponentiating
+  variable_derivative_or <- variable_derivative |>
+    mutate(
+      .odds_ratio = exp(.derivative),
+      .lower_ci_or = exp(.lower_ci),
+      .upper_ci_or = exp(.upper_ci)
+    )
+  
+  # Find min/max points of the odds ratio for annotation
+  min_max_points <- variable_derivative_or |>
+    filter(.odds_ratio == max(.odds_ratio) | .odds_ratio == min(.odds_ratio)) |>
+    mutate(label = if_else(.odds_ratio == max(.odds_ratio),
+                           paste0("Peak OR at ", round(!!sym(variable), 1), " (OR=", round(.odds_ratio, 2), ")"),
+                           paste0("Low OR at ", round(!!sym(variable), 1), " (OR=", round(.odds_ratio, 2), ")")))
+  
+  p <- ggplot(variable_derivative_or, aes(x = !!sym(variable), y = .odds_ratio)) +
+    # A reference line at y=1 indicates no effect on the odds
+    geom_hline(yintercept = 1, linetype = "dashed", color = "grey50") +
+    geom_ribbon(aes(ymin = .lower_ci_or, ymax = .upper_ci_or),
+                fill = "purple", alpha = 0.2) +
+    geom_line(color = "black", linewidth = 1) +
+    geom_text_repel(data = min_max_points, aes(label = label),
+                    color = "black", nudge_y = 0.1, segment.color = "grey50",
+                    bg.color = "white", bg.r = 0.15) +
+    geom_point(data = min_max_points, aes(x = !!sym(variable), y = .odds_ratio),
+               color = "red", size = 3, shape = 18) +
+    scale_x_continuous(breaks = xbreaks) +
+    # Use a log scale for the y-axis as odds ratios are multiplicative
+    scale_y_continuous(trans = "log10",
+                       breaks = c(0.5, 0.75, 1, 1.25, 1.5, 2, 3, 4, 5),
+                       labels = c("0.5", "0.75", "1", "1.25", "1.5", "2", "3", "4", "5")) +
+    theme_bw() +
+    theme(plot.subtitle = element_text(size = 9)) +
+    labs(
+      title = paste("Instantaneous Odds Ratio for", variable),
+      subtitle = paste("Shows odds ratio per unit increase in", variable, ". OR=1 means no effect.\nIntervals are 95% simultaneous CIs. Values >1 increase odds, <1 decrease odds."),
+      x = variable,
+      y = "Odds Ratio per Unit Increase"
+    )
+  
+  return(p)
+}
+
+
+#' Plot Full Model Fitted Values on the Probability Scale
+#'
+#' This function visualizes the full model's predicted probability while varying
+#' a single covariate of interest. All other covariates are held at their
+#' reference/mean values. It provides a comprehensive view of the model's
+#' predictions.
+#'
+#' @section Posterior Distribution:
+#' This function uses `fitted_samples`, which simulates from the posterior
+#' distribution of the *entire expected response*, not just a single smooth term.
+#' For a given set of covariate values $ \mathbf{X}_i $, draws of the linear
+#' predictor $ \eta_i^* $ are made from:
+#' $$ \eta_i^* \sim \text{MVN}(\mathbf{X}_i \hat{\boldsymbol{\beta}}, \mathbf{X}_i \mathbf{V}_b \mathbf{X}_i^T) $$
+#' where $ \hat{\boldsymbol{\beta}} $ is the vector of all model coefficients and $ \mathbf{V}_b $
+#' is the full coefficient covariance matrix. Each draw is then transformed to the
+#' response (probability) scale.
+#'
+#' @section Plot Scale and Centering:
+#' The Y-axis is on the **absolute probability scale (0 to 1)**. The plot is
+#' **not centered**. It shows the final predicted probability from the model.
+#' It displays 95% intervals based on the `ci_type` parameter selection.
+#'
+#' @inheritParams plot_smooth_term
+#' @param data_to_predict Optional data frame to use for predictions. If `NULL`,
+#'   the model frame is used.
+#' @param ci_type Character string specifying which confidence intervals to plot.
+#'   Options are "both" (default), "nychka", or "posterior".
+#'
+#' @return A `ggplot` object visualizing the full model's fitted probabilities.
+plot_gam_fitted_prob <- function(gam_to_plot,
+                                 plot_term,
+                                 data_to_predict = NULL,
+                                 xbreaks = seq(5, 100, by = 5),
+                                 posterior_draws = 1000,
+                                 seed_value = 42,
+                                 sampler = "gaussian",
+                                 burnin_value = 1000,
+                                 ylimits = c(0,1),
+                                 ci_type = "both") {
+  
+  # Validate ci_type parameter
+  ci_type <- match.arg(ci_type, choices = c("both", "nychka", "posterior"))
+  
+  variable <- str_match_all(plot_term, "s\\((.*?)\\)")[[1]][,2]
+  
+  if (is.null(data_to_predict)) {
+    data_to_predict <- model.frame(gam_to_plot)
+  }
+  
+  # Create a data slice that varies the predictor of interest while holding
+  # other predictors at their mean (continuous) or reference (factor) values.
+  pred_data <- data_slice(gam_to_plot,
+                          !!sym(variable) := evenly(!!sym(variable))) |>
+    mutate(row_number = row_number())
+  
+  # Calculate the point estimate of the fitted response on the probability scale.
+  # This is the deterministic calculation: mu_hat_i = g^-1(X_i * beta_hat)
+  fitted_vals <- fitted_values(gam_to_plot,
+                               data = pred_data,
+                               scale = "response",
+                               unconditional = TRUE)
+  
+  response_derivative <- response_derivatives(gam_to_plot,
+                       data = pred_data, type = "central", focal = variable,
+                       eps = 0.01, seed = seed_value, n_sim = posterior_draws
+  )
+  # Always compute posterior samples for the grey lines
+  fitted_samples <- fitted_samples(gam_to_plot, unconditional = T, data = pred_data,
+                                   n = posterior_draws, seed = seed_value, method = sampler,
+                                   burnin = burnin_value, scale = "response")
+  
+  # Calculate quantile-based credible intervals from the posterior draws.
+  # This provides a Bayesian-style interval.
+  fitted_sample_quantiles <- fitted_samples %>%
+    group_by(.row) %>%
+    summarise(
+      lower_quantile = quantile(.fitted, probs = 0.025),
+      upper_quantile = quantile(.fitted, probs = 0.975),
+      .groups = "drop"
+    ) %>%
+    left_join(pred_data %>% mutate(.row = row_number()), by = ".row")
+  
+  # Join posterior samples with predictor data for plotting.
+  fitted_samples <- pred_data  %>%
+    left_join(fitted_samples, by = c("row_number" = ".row"))
+  
+  
+  # Find min/max points of the point estimate for annotation.
+  min_max_points <- fitted_vals |>
+    filter(.fitted == max(.fitted) | .fitted == min(.fitted)) |>
+    mutate(label = if_else(.fitted == max(.fitted),
+                           paste0("Max prob at ", round(!!sym(variable), 1),
+                                  " (P=", round(.fitted, 3), ")"),
+                           paste0("Min prob at ", round(!!sym(variable), 1),
+                                  " (P=", round(.fitted, 3), ")")))
+  
+  # Create the base plot with posterior draws (always included)
+  p <- ggplot(fitted_vals, aes(x = !!sym(variable))) +
+    geom_line(data = fitted_samples, aes(y = .fitted, group = .draw),
+              color = "grey85", alpha = 0.5, linewidth = 0.5)
+  
+  # Add confidence intervals based on ci_type
+  switch(ci_type,
+         "both" = {
+           p <- p + 
+             geom_ribbon(data = fitted_sample_quantiles,
+                         aes(ymin = lower_quantile, ymax = upper_quantile,
+                             fill = "Posterior Quantile CI (95%)"),
+                         alpha = 0.3) +
+             geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci,
+                             fill = "Nychka-type CI (95%)"),
+                         alpha = 0.3) +
+             scale_fill_manual(
+               name = "Interval Type",
+               values = c("Posterior Quantile CI (95%)" = "dodgerblue",
+                          "Nychka-type CI (95%)" = "firebrick"),
+               guide = guide_legend(override.aes = list(alpha = 0.5))
+             )
+         },
+         "nychka" = {
+           p <- p + 
+             geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci),
+                         fill = "firebrick", alpha = 0.3)
+         },
+         "posterior" = {
+           p <- p + 
+             geom_ribbon(data = fitted_sample_quantiles,
+                         aes(ymin = lower_quantile, ymax = upper_quantile),
+                         fill = "dodgerblue", alpha = 0.3)
+         }
+  )
+  
+  # Add the main fitted line and annotations
+  p <- p +
+    geom_line(aes(y = .fitted),
+              color = "black",
+              linewidth = 1) +
+    geom_text_repel(data = min_max_points,
+                    aes(y = .fitted, label = label),
+                    color = "black", nudge_y = 0.05, segment.color = "grey50",
+                    bg.color = "white", bg.r = 0.15) +
+    geom_point(data = min_max_points,
+               aes(y = .fitted),
+               color = "blue", size = 4, shape = 18) +
+    geom_hline(yintercept = 0.5, linetype = "dashed", color = "grey50", alpha = 0.5) +
+    scale_x_continuous(breaks = xbreaks) +
+    scale_y_continuous(labels = scales::percent_format(), limits = ylimits) +
+    theme_bw() +
+    theme(plot.subtitle = element_text(size = 9),
+          legend.position = if(ci_type == "both") "bottom" else "none") +
+    labs(
+      title = paste("Posterior Fitted Values vs", variable),
+      subtitle = paste("Full model predictions with 95%", 
+                       switch(ci_type,
+                              "both" = "CIs",
+                              "nychka" = "Nychka-type CI",
+                              "posterior" = "posterior quantile CI"),
+                       ". Other predictors held at reference/mean values.\n",
+                       "Grey lines show", posterior_draws, "posterior draws."),
+      x = variable,
+      y = "Predicted (Mean) Probability"
+    )
+  
+  return(p)
+}
+
+
+
+# PLayground:
+#' Plot Response Derivatives on Log-Odds Scale
+#'
+#' This function calculates and plots the first derivative of the fitted response
+#' on the log-odds scale, showing how the log-odds change with respect to changes
+#' in the predictor.
+#'
+#' @section Calculation:
+#' The plot shows the derivative of the fitted response on the log-odds scale,
+#' along with credible intervals from posterior sampling.
+#'
+#' @section Plot Scale:
+#' The Y-axis is on the **log-odds rate of change scale**. A value of 0.1 means
+#' that a 1-unit increase in the covariate is associated with a 0.1 increase in
+#' the log-odds of the outcome at that specific point.
+#'
+#' @inheritParams plot_gam_fitted_prob
+#'
+#' @return A `ggplot` object visualizing the response derivative on log-odds scale.
+plot_response_derivative_logodds <- function(gam_to_plot,
+                                             plot_term,
+                                             data_to_predict = NULL,
+                                             xbreaks = seq(5, 100, by = 5),
+                                             posterior_draws = 1000,
+                                             seed_value = 42,
+                                             sampler = "gaussian",
+                                             burnin_value = 1000,
+                                             ylimits = NULL,
+                                             ci_type = "both") {
+  
+  # Validate ci_type parameter
+  ci_type <- match.arg(ci_type, choices = c("both", "nychka", "posterior"))
+  
+  variable <- str_match_all(plot_term, "s\\((.*?)\\)")[[1]][,2]
+  
+  if (is.null(data_to_predict)) {
+    data_to_predict <- model.frame(gam_to_plot)
+  }
+  
+  # Create a data slice that varies the predictor of interest
+  pred_data <- data_slice(gam_to_plot,
+                          !!sym(variable) := evenly(!!sym(variable))) |>
+    mutate(row_number = row_number())
+  
+  # Calculate response derivatives on the response scale
+  response_deriv <- response_derivatives(gam_to_plot,
+                                         data = pred_data, 
+                                         type = "central", 
+                                         focal = variable,
+                                         eps = 0.01, 
+                                         seed = seed_value, 
+                                         n_sim = posterior_draws)
+  
+  # Find min/max points for annotation
+  min_max_points <- response_deriv |>
+    filter(.derivative == max(.derivative) | .derivative == min(.derivative)) |>
+    mutate(label = if_else(.derivative == max(.derivative),
+                           paste0("Peak derivative at ", round(!!sym(variable), 1), 
+                                  " (", round(.derivative, 3), ")"),
+                           paste0("Low derivative at ", round(!!sym(variable), 1), 
+                                  " (", round(.derivative, 3), ")")))
+  
+  # Create the base plot
+  p <- ggplot(response_deriv, aes(x = !!sym(variable))) +
+    geom_hline(yintercept = 0, linetype = "dashed", color = "grey50", alpha = 0.5)
+  
+  # Add confidence intervals based on ci_type
+  switch(ci_type,
+         "both" = {
+           p <- p + 
+             geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci,
+                             fill = "Response Derivative CI (95%)"),
+                         alpha = 0.3) +
+             scale_fill_manual(
+               name = "Interval Type",
+               values = c("Response Derivative CI (95%)" = "dodgerblue"),
+               guide = guide_legend(override.aes = list(alpha = 0.5))
+             )
+         },
+         "nychka" = {
+           p <- p + 
+             geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci),
+                         fill = "firebrick", alpha = 0.3)
+         },
+         "posterior" = {
+           p <- p + 
+             geom_ribbon(aes(ymin = .lower_ci, ymax = .upper_ci),
+                         fill = "dodgerblue", alpha = 0.3)
+         }
+  )
+  
+  # Add the main derivative line and annotations
+  p <- p +
+    geom_line(aes(y = .derivative),
+              color = "black",
+              linewidth = 1) +
+    geom_text_repel(data = min_max_points,
+                    aes(y = .derivative, label = label),
+                    color = "black", nudge_y = 0.05, segment.color = "grey50",
+                    bg.color = "white", bg.r = 0.15) +
+    geom_point(data = min_max_points,
+               aes(y = .derivative),
+               color = "blue", size = 4, shape = 18) +
+    scale_x_continuous(breaks = xbreaks) +
+    theme_bw() +
+    theme(plot.subtitle = element_text(size = 9),
+          legend.position = if(ci_type == "both") "bottom" else "none") +
+    labs(
+      title = paste("Response Derivative (Log-Odds Scale) vs", variable),
+      subtitle = paste("Shows rate of change in log-odds per unit increase in", variable, 
+                       ". Zero means no effect.\n",
+                       "95%", switch(ci_type,
+                                     "both" = "CI",
+                                     "nychka" = "Nychka-type CI",
+                                     "posterior" = "posterior CI"),
+                       "from", posterior_draws, "posterior draws."),
+      x = variable,
+      y = "Rate of Change (Log-odds per unit)"
+    )
+  
+  if (!is.null(ylimits)) {
+    p <- p + scale_y_continuous(limits = ylimits, breaks = scales::pretty_breaks())
+  }
+  
+  return(p)
+}
+
+
+#' Plot Response Derivatives on Odds Ratio Scale
+#'
+#' This function calculates the response derivatives and transforms them to
+#' odds ratios by exponentiation, showing the multiplicative change in odds.
+#'
+#' @section Calculation and Transformation:
+#' The response derivative is calculated first, then transformed to odds ratio
+#' scale by exponentiation: OR = exp(derivative).
+#'
+#' @section Plot Scale:
+#' The Y-axis is on the **odds ratio scale**. A value of 1 means no effect,
+#' 2 means the odds double, 0.5 means the odds are halved.
+#'
+#' @inheritParams plot_gam_fitted_prob
+#'
+#' @return A `ggplot` object visualizing the response derivative as odds ratios.
+plot_response_derivative_oddsratio <- function(gam_to_plot,
+                                        plot_term,
+                                        data_to_predict = NULL,
+                                        xbreaks = seq(5, 100, by = 5),
+                                        posterior_draws = 1000,
+                                        seed_value = 42,
+                                        sampler = "gaussian",
+                                        burnin_value = 1000,
+                                        ylimits = NULL,
+                                        ci_type = "both") {
+  
+  # Validate ci_type parameter
+  ci_type <- match.arg(ci_type, choices = c("both", "nychka", "posterior"))
+  
+  variable <- str_match_all(plot_term, "s\\((.*?)\\)")[[1]][,2]
+  
+  if (is.null(data_to_predict)) {
+    data_to_predict <- model.frame(gam_to_plot)
+  }
+  
+  # Create a data slice that varies the predictor of interest
+  pred_data <- data_slice(gam_to_plot,
+                          !!sym(variable) := evenly(!!sym(variable))) |>
+    mutate(row_number = row_number())
+  
+  # Calculate response derivatives
+  response_deriv <- response_derivatives(gam_to_plot,
+                                         data = pred_data, 
+                                         type = "central", 
+                                         focal = variable,
+                                         eps = 0.01, 
+                                         seed = seed_value, 
+                                         n_sim = posterior_draws)
+  
+  # Transform to odds ratio scale
+  response_deriv_or <- response_deriv |>
+    mutate(
+      .odds_ratio = exp(.derivative),
+      .lower_ci_or = exp(.lower_ci),
+      .upper_ci_or = exp(.upper_ci)
+    )
+  
+  # Find min/max points for annotation
+  min_max_points <- response_deriv_or |>
+    filter(.odds_ratio == max(.odds_ratio) | .odds_ratio == min(.odds_ratio)) |>
+    mutate(label = if_else(.odds_ratio == max(.odds_ratio),
+                           paste0("Peak OR at ", round(!!sym(variable), 1), 
+                                  " (OR=", round(.odds_ratio, 2), ")"),
+                           paste0("Low OR at ", round(!!sym(variable), 1), 
+                                  " (OR=", round(.odds_ratio, 2), ")")))
+  
+  # Create the base plot
+  p <- ggplot(response_deriv_or, aes(x = !!sym(variable))) +
+    geom_hline(yintercept = 1, linetype = "dashed", color = "grey50", alpha = 0.5)
+  
+  # Add confidence intervals based on ci_type
+  switch(ci_type,
+         "both" = {
+           p <- p + 
+             geom_ribbon(aes(ymin = .lower_ci_or, ymax = .upper_ci_or,
+                             fill = "Odds Ratio CI (95%)"),
+                         alpha = 0.3) +
+             scale_fill_manual(
+               name = "Interval Type",
+               values = c("Odds Ratio CI (95%)" = "purple"),
+               guide = guide_legend(override.aes = list(alpha = 0.5))
+             )
+         },
+         "nychka" = {
+           p <- p + 
+             geom_ribbon(aes(ymin = .lower_ci_or, ymax = .upper_ci_or),
+                         fill = "purple", alpha = 0.3)
+         },
+         "posterior" = {
+           p <- p + 
+             geom_ribbon(aes(ymin = .lower_ci_or, ymax = .upper_ci_or),
+                         fill = "purple", alpha = 0.3)
+         }
+  )
+  
+  # Add the main odds ratio line and annotations
+  p <- p +
+    geom_line(aes(y = .odds_ratio),
+              color = "black",
+              linewidth = 1) +
+    geom_point(data = min_max_points,
+               aes(y = .odds_ratio),
+               color = "blue", size = 4, shape = 18)  +
+    theme_bw() +
+    theme(plot.subtitle = element_text(size = 9),
+          legend.position = if(ci_type == "both") "bottom" else "none") +
+    scale_x_continuous(breaks = xbreaks) +
+    labs(
+      title = paste("Instantaneous Odds Ratio for", variable),
+      subtitle = paste("Shows odds ratio per unit increase in", variable, 
+                       ". OR=1 means no effect.\n",
+                       "95%", switch(ci_type,
+                                     "both" = "CI",
+                                     "nychka" = "Nychka-type CI",
+                                     "posterior" = "posterior CI"),
+                       "from", posterior_draws, "posterior draws.",
+                       "Values >1 increase odds, <1 decrease odds."),
+      x = variable,
+      y = "Odds Ratio per Unit Increase"
+    ) +
+    geom_text_repel(data = min_max_points,
+                    aes(y = .odds_ratio, label = label),
+                    color = "black", nudge_y = 0.05, segment.color = "grey50",
+                    bg.color = "white", bg.r = 0.15) 
+  
+  return(p)
+}

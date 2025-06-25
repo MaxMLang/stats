@@ -1,0 +1,546 @@
+\documentclass[12pt]{article}
+\usepackage{amsmath, amssymb, amsthm}
+\usepackage{bm}
+\usepackage{geometry}
+\usepackage{hyperref}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{multirow}
+\usepackage{float}
+
+\geometry{margin=1in}
+
+% Theorem environments
+\newtheorem{theorem}{Theorem}
+\newtheorem{lemma}[theorem]{Lemma}
+\newtheorem{proposition}[theorem]{Proposition}
+\newtheorem{corollary}[theorem]{Corollary}
+\newtheorem{definition}{Definition}
+\newtheorem{remark}{Remark}
+
+% Custom commands
+\newcommand{\R}{\mathbb{R}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\Var}{\text{Var}}
+\newcommand{\Cov}{\text{Cov}}
+\newcommand{\tr}{\text{tr}}
+\newcommand{\diag}{\text{diag}}
+\DeclareMathOperator*{\argmin}{arg\,min}
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\title{Splines and Smoothing: Complete Mathematical Derivations}
+\author{}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+\tableofcontents
+\newpage
+
+%% PART I: FOUNDATIONS %%
+\part{Foundations and Motivation}
+
+\section{Introduction: The Physical Analogy}
+
+\subsection{The Draftsman's Spline}
+
+The term ``spline'' originates from a flexible wooden strip used by draftsmen. When bent against fixed points (lead weights or ``ducks''), the strip naturally assumes a shape that minimizes its total bending energy.
+
+\begin{definition}[Bending Energy]
+For a function $f: [a,b] \to \R$ with continuous second derivative, the bending energy is:
+\begin{equation}
+E[f] = \int_a^b [f''(x)]^2 \, dx
+\end{equation}
+\end{definition}
+
+This physical principle translates directly into the mathematical framework of spline smoothing.
+
+\subsection{The Fundamental Trade-off}
+
+The central challenge in nonparametric regression is balancing:
+\begin{itemize}
+    \item \textbf{Fidelity to data}: Minimizing $\sum_{i=1}^n (y_i - f(x_i))^2$
+    \item \textbf{Smoothness}: Minimizing roughness, e.g., $\int [f''(x)]^2 dx$
+\end{itemize}
+
+%% PART II: BASIS FUNCTIONS %%
+\part{From Basis Functions to Penalized Splines}
+
+\section{Basis Function Representations}
+
+\subsection{The Basis Expansion Framework}
+
+\begin{definition}[Basis Expansion]
+A function $f: \R \to \R$ is represented as a linear combination of basis functions:
+\begin{equation}
+f(x) = \sum_{k=1}^{K} \beta_k b_k(x)
+\end{equation}
+where $\{b_k(x)\}_{k=1}^K$ are known basis functions and $\{\beta_k\}_{k=1}^K$ are coefficients to be estimated.
+\end{definition}
+
+\subsection{Truncated Power Basis}
+
+\begin{definition}[Truncated Power Function]
+For a knot $\kappa$ and degree $d$, the truncated power function is:
+\begin{equation}
+(x - \kappa)_+^d = \begin{cases}
+(x - \kappa)^d & \text{if } x > \kappa \\
+0 & \text{if } x \leq \kappa
+\end{cases}
+\end{equation}
+\end{definition}
+
+For a spline of degree $d$ with knots $\kappa_1, \ldots, \kappa_M$, the basis consists of:
+\begin{align}
+\{1, x, x^2, \ldots, x^d, (x-\kappa_1)_+^d, (x-\kappa_2)_+^d, \ldots, (x-\kappa_M)_+^d\}
+\end{align}
+
+\subsection{B-splines}
+
+B-splines are defined recursively via the Cox-de Boor formula:
+
+\begin{definition}[B-spline Recursion]
+For degree $d$ and knot sequence $\{t_i\}$:
+\begin{align}
+B_{i,0}(x) &= \begin{cases}
+1 & \text{if } t_i \leq x < t_{i+1} \\
+0 & \text{otherwise}
+\end{cases} \\
+B_{i,d}(x) &= \frac{x - t_i}{t_{i+d} - t_i} B_{i,d-1}(x) + \frac{t_{i+d+1} - x}{t_{i+d+1} - t_{i+1}} B_{i+1,d-1}(x)
+\end{align}
+\end{definition}
+
+\subsection{The Model Matrix}
+
+\begin{definition}[Model Matrix]
+Given observations $(x_i, y_i)_{i=1}^n$ and basis functions $\{b_k\}_{k=1}^K$, the model matrix $\mathbf{X} \in \R^{n \times K}$ has entries:
+\begin{equation}
+X_{ik} = b_k(x_i)
+\end{equation}
+\end{definition}
+
+This transforms the function estimation problem into:
+\begin{equation}
+\mathbf{y} = \mathbf{X}\bm{\beta} + \bm{\epsilon}
+\end{equation}
+
+%% PART III: PENALIZED SPLINES %%
+\part{The Penalized Spline Solution}
+
+\section{Penalized Regression Splines}
+
+\subsection{The Penalized Objective Function}
+
+\begin{definition}[Penalized Least Squares]
+The penalized least squares objective is:
+\begin{equation}
+\mathcal{L}(\bm{\beta}) = \|\mathbf{y} - \mathbf{X}\bm{\beta}\|^2 + \lambda \bm{\beta}^T \mathbf{S} \bm{\beta}
+\end{equation}
+where:
+\begin{itemize}
+    \item $\lambda \geq 0$ is the smoothing parameter
+    \item $\mathbf{S}$ is the penalty matrix
+\end{itemize}
+\end{definition}
+
+\section{Constructing Penalty Matrices}
+
+\subsection{Derivative-based Penalties}
+
+\begin{theorem}[Derivative Penalty in Basis Form]
+For the functional penalty $J_m(f) = \int [f^{(m)}(x)]^2 dx$ and basis expansion $f(x) = \sum_{k=1}^K \beta_k b_k(x)$:
+\begin{equation}
+J_m(f) = \bm{\beta}^T \mathbf{S} \bm{\beta}
+\end{equation}
+where $S_{jk} = \int b_j^{(m)}(x) b_k^{(m)}(x) dx$.
+\end{theorem}
+
+\begin{proof}
+Starting with $f(x) = \sum_{k=1}^K \beta_k b_k(x)$, the $m$-th derivative is:
+\begin{equation}
+f^{(m)}(x) = \sum_{k=1}^K \beta_k b_k^{(m)}(x)
+\end{equation}
+
+Therefore:
+\begin{align}
+J_m(f) &= \int \left[f^{(m)}(x)\right]^2 dx \\
+&= \int \left[\sum_{j=1}^K \beta_j b_j^{(m)}(x)\right] \left[\sum_{k=1}^K \beta_k b_k^{(m)}(x)\right] dx \\
+&= \int \sum_{j=1}^K \sum_{k=1}^K \beta_j \beta_k b_j^{(m)}(x) b_k^{(m)}(x) dx \\
+&= \sum_{j=1}^K \sum_{k=1}^K \beta_j \beta_k \int b_j^{(m)}(x) b_k^{(m)}(x) dx \\
+&= \sum_{j=1}^K \sum_{k=1}^K \beta_j \beta_k S_{jk} \\
+&= \bm{\beta}^T \mathbf{S} \bm{\beta}
+\end{align}
+\end{proof}
+
+\subsection{Difference-based Penalties (P-splines)}
+
+\begin{definition}[Difference Operators]
+The $m$-th order difference operator $\Delta^m$ is defined recursively:
+\begin{align}
+\Delta^1 \beta_k &= \beta_k - \beta_{k-1} \\
+\Delta^m \beta_k &= \Delta^{m-1}(\Delta \beta_k) = \Delta^{m-1} \beta_k - \Delta^{m-1} \beta_{k-1}
+\end{align}
+\end{definition}
+
+\begin{proposition}[Explicit Difference Formulas]
+\begin{align}
+\Delta^1 \beta_k &= \beta_k - \beta_{k-1} \\
+\Delta^2 \beta_k &= \beta_k - 2\beta_{k-1} + \beta_{k-2} \\
+\Delta^3 \beta_k &= \beta_k - 3\beta_{k-1} + 3\beta_{k-2} - \beta_{k-3}
+\end{align}
+More generally:
+\begin{equation}
+\Delta^m \beta_k = \sum_{j=0}^m (-1)^{m-j} \binom{m}{j} \beta_{k-m+j}
+\end{equation}
+\end{proposition}
+
+\begin{theorem}[Matrix Form of Difference Penalty]
+The penalty $\sum_k (\Delta^m \beta_k)^2$ can be written as:
+\begin{equation}
+\bm{\beta}^T \mathbf{D}_m^T \mathbf{D}_m \bm{\beta} = \bm{\beta}^T \mathbf{S} \bm{\beta}
+\end{equation}
+where $\mathbf{D}_m$ is the difference matrix and $\mathbf{S} = \mathbf{D}_m^T \mathbf{D}_m$.
+\end{theorem}
+
+\section{The Penalized Solution}
+
+\subsection{Derivation of the Solution}
+
+\begin{theorem}[Penalized Least Squares Estimator]
+The minimizer of $\mathcal{L}(\bm{\beta}) = \|\mathbf{y} - \mathbf{X}\bm{\beta}\|^2 + \lambda \bm{\beta}^T \mathbf{S} \bm{\beta}$ is:
+\begin{equation}
+\hat{\bm{\beta}} = (\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})^{-1}\mathbf{X}^T\mathbf{y}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Expanding the objective function:
+\begin{align}
+\mathcal{L}(\bm{\beta}) &= (\mathbf{y} - \mathbf{X}\bm{\beta})^T(\mathbf{y} - \mathbf{X}\bm{\beta}) + \lambda \bm{\beta}^T \mathbf{S} \bm{\beta} \\
+&= \mathbf{y}^T\mathbf{y} - \mathbf{y}^T\mathbf{X}\bm{\beta} - \bm{\beta}^T\mathbf{X}^T\mathbf{y} + \bm{\beta}^T\mathbf{X}^T\mathbf{X}\bm{\beta} + \lambda \bm{\beta}^T \mathbf{S} \bm{\beta}
+\end{align}
+
+Since $\mathbf{y}^T\mathbf{X}\bm{\beta}$ is a scalar, it equals its transpose $\bm{\beta}^T\mathbf{X}^T\mathbf{y}$:
+\begin{equation}
+\mathcal{L}(\bm{\beta}) = \mathbf{y}^T\mathbf{y} - 2\bm{\beta}^T\mathbf{X}^T\mathbf{y} + \bm{\beta}^T(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})\bm{\beta}
+\end{equation}
+
+Taking the derivative with respect to $\bm{\beta}$:
+\begin{equation}
+\frac{\partial \mathcal{L}}{\partial \bm{\beta}} = -2\mathbf{X}^T\mathbf{y} + 2(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})\bm{\beta}
+\end{equation}
+
+Setting equal to zero:
+\begin{align}
+-2\mathbf{X}^T\mathbf{y} + 2(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})\hat{\bm{\beta}} &= \mathbf{0} \\
+(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})\hat{\bm{\beta}} &= \mathbf{X}^T\mathbf{y} \\
+\hat{\bm{\beta}} &= (\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})^{-1}\mathbf{X}^T\mathbf{y}
+\end{align}
+\end{proof}
+
+\subsection{The Influence Matrix}
+
+\begin{definition}[Influence Matrix]
+The influence (or hat) matrix is:
+\begin{equation}
+\mathbf{A} = \mathbf{X}(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})^{-1}\mathbf{X}^T
+\end{equation}
+giving fitted values $\hat{\mathbf{y}} = \mathbf{A}\mathbf{y}$.
+\end{definition}
+
+\begin{proposition}[Properties of the Influence Matrix]
+\begin{enumerate}
+    \item $\mathbf{A}$ is symmetric if $\mathbf{S}$ is symmetric
+    \item $\mathbf{A}$ is idempotent ($\mathbf{A}^2 = \mathbf{A}$) only when $\lambda = 0$
+    \item $0 \leq A_{ii} \leq 1$ (leverage values)
+    \item $\tr(\mathbf{A}) = \text{effective degrees of freedom}$
+\end{enumerate}
+\end{proposition}
+
+\section{Effective Degrees of Freedom}
+
+\subsection{Definition and Basic Properties}
+
+\begin{definition}[Effective Degrees of Freedom]
+The effective degrees of freedom (EDF) is:
+\begin{equation}
+\text{EDF} = \tr(\mathbf{A}) = \tr\left(\mathbf{X}(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})^{-1}\mathbf{X}^T\right)
+\end{equation}
+\end{definition}
+
+Using the cyclic property of trace:
+\begin{equation}
+\text{EDF} = \tr\left((\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})^{-1}\mathbf{X}^T\mathbf{X}\right)
+\end{equation}
+
+\subsection{Eigendecomposition Interpretation}
+
+\begin{theorem}[EDF via Eigendecomposition]
+Let the eigendecomposition of $\mathbf{S}$ with respect to $\mathbf{X}^T\mathbf{X}$ be characterized by:
+\begin{equation}
+\mathbf{S}\mathbf{v}_j = \Lambda_j \mathbf{X}^T\mathbf{X}\mathbf{v}_j
+\end{equation}
+Then:
+\begin{equation}
+\text{EDF} = \sum_{j=1}^K \frac{1}{1 + \lambda \Lambda_j}
+\end{equation}
+\end{theorem}
+
+\begin{proof}
+Consider the generalized eigenvalue problem. Let $\mathbf{X} = \mathbf{Q}\mathbf{R}$ (QR decomposition). Define $\tilde{\mathbf{S}} = \mathbf{R}^{-T}\mathbf{S}\mathbf{R}^{-1}$ with eigendecomposition $\tilde{\mathbf{S}} = \mathbf{U}\bm{\Lambda}\mathbf{U}^T$.
+
+In the transformed coordinates with $\tilde{\bm{\beta}} = \mathbf{R}\bm{\beta}$ and $\tilde{\mathbf{y}} = \mathbf{Q}^T\mathbf{y}$:
+\begin{equation}
+\hat{\tilde{\bm{\beta}}} = (\mathbf{I} + \lambda\tilde{\mathbf{S}})^{-1}\tilde{\mathbf{y}} = (\mathbf{I} + \lambda\mathbf{U}\bm{\Lambda}\mathbf{U}^T)^{-1}\tilde{\mathbf{y}}
+\end{equation}
+
+In the eigenbasis where $\bm{\alpha} = \mathbf{U}^T\tilde{\bm{\beta}}$:
+\begin{equation}
+\hat{\alpha}_j = \frac{1}{1 + \lambda \Lambda_j} \tilde{y}_j
+\end{equation}
+
+The influence matrix in this basis is diagonal with entries $\frac{1}{1 + \lambda \Lambda_j}$, giving:
+\begin{equation}
+\text{EDF} = \sum_{j=1}^K \frac{1}{1 + \lambda \Lambda_j}
+\end{equation}
+\end{proof}
+
+%% PART IV: ADVANCED BASES %%
+\part{Advanced Spline Bases}
+
+\section{P-Splines}
+
+\subsection{Construction}
+
+P-splines combine:
+\begin{itemize}
+    \item B-spline basis with evenly spaced knots
+    \item Difference penalties on adjacent coefficients
+\end{itemize}
+
+\begin{definition}[P-spline Model]
+\begin{equation}
+f(x) = \sum_{k=1}^K \beta_k B_k(x)
+\end{equation}
+with penalty:
+\begin{equation}
+\lambda \sum_{k} (\Delta^m \beta_k)^2 = \lambda \bm{\beta}^T \mathbf{D}_m^T \mathbf{D}_m \bm{\beta}
+\end{equation}
+\end{definition}
+
+\section{Thin Plate Regression Splines}
+
+\subsection{The Thin Plate Spline Functional}
+
+\begin{definition}[TPS Penalty]
+For a function $f: \R^d \to \R$, the order-$m$ TPS penalty is:
+\begin{equation}
+J_{m,d}(f) = \sum_{\nu_1+\cdots+\nu_d = m} \frac{m!}{\nu_1! \cdots \nu_d!} \int \left( \frac{\partial^m f}{\partial x_1^{\nu_1} \cdots \partial x_d^{\nu_d}} \right)^2 d\mathbf{x}
+\end{equation}
+\end{definition}
+
+\subsection{Optimal Basis Construction}
+
+\begin{theorem}[TPRS Optimality]
+The rank-$k$ TPRS basis minimizes:
+\begin{equation}
+\hat{e}_k = \max_{\bm{\delta} \neq \mathbf{0}} \frac{\|(\mathbf{E} - \hat{\mathbf{E}}_k)\bm{\delta}\|}{\|\bm{\delta}\|}
+\end{equation}
+where $\mathbf{E}$ and $\hat{\mathbf{E}}_k$ are the full and truncated basis penalty matrices.
+\end{theorem}
+
+The construction algorithm:
+\begin{enumerate}
+    \item Form full TPS basis and penalty matrix $\mathbf{S}_{full}$
+    \item Eigendecompose: $\mathbf{S}_{full} = \mathbf{U}\bm{\Lambda}\mathbf{U}^T$
+    \item Select:
+    \begin{itemize}
+        \item All $M$ null space eigenvectors ($\Lambda_j = 0$)
+        \item The $k-M$ eigenvectors with smallest positive eigenvalues
+    \end{itemize}
+\end{enumerate}
+
+\section{Adaptive Smoothers}
+
+\subsection{Spatially Varying Penalties}
+
+\begin{definition}[Adaptive P-spline Penalty]
+\begin{equation}
+\mathcal{P}_a = \lambda \sum_{k} \omega_k (\Delta^m \beta_k)^2
+\end{equation}
+where the weights $\omega_k > 0$ vary smoothly.
+\end{definition}
+
+\subsection{Hierarchical Construction}
+
+Model the log-weights as a smooth function:
+\begin{equation}
+\log(\omega_k) = \sum_{j=1}^{K_\omega} \gamma_j b_{\omega,j}(k)
+\end{equation}
+
+In matrix form with $\mathbf{B}_\omega$ as the basis matrix for weights:
+\begin{equation}
+\log(\bm{\omega}) = \mathbf{B}_\omega \bm{\gamma}
+\end{equation}
+
+The penalty becomes:
+\begin{align}
+\mathcal{P}_a &= \lambda \bm{\beta}^T \mathbf{D}_m^T \diag(\bm{\omega}) \mathbf{D}_m \bm{\beta} \\
+&= \lambda \sum_{j=1}^{K_\omega} \exp(\gamma_j) \bm{\beta}^T \mathbf{D}_m^T \diag(\mathbf{B}_{\omega,j}) \mathbf{D}_m \bm{\beta} \\
+&= \sum_{j=1}^{K_\omega} \lambda_j \bm{\beta}^T \mathbf{S}_j \bm{\beta}
+\end{align}
+where $\lambda_j = \lambda \exp(\gamma_j)$ and $\mathbf{S}_j = \mathbf{D}_m^T \diag(\mathbf{B}_{\omega,j}) \mathbf{D}_m$.
+
+%% PART V: BAYESIAN CONNECTIONS %%
+\part{Bayesian Connections and Inference}
+
+\section{From Penalization to Priors}
+
+\subsection{The Bayesian Model}
+
+\begin{theorem}[Penalized Splines as Bayesian Models]
+The penalized least squares estimate is the posterior mode under:
+\begin{align}
+\mathbf{y} | \bm{\beta}, \sigma^2 &\sim N(\mathbf{X}\bm{\beta}, \sigma^2\mathbf{I}) \\
+\bm{\beta} | \lambda, \sigma^2 &\sim N(\mathbf{0}, \sigma^2\lambda^{-1}\mathbf{S}^{-})
+\end{align}
+where $\mathbf{S}^{-}$ is a generalized inverse of $\mathbf{S}$.
+\end{theorem}
+
+\begin{proof}
+The log-posterior is:
+\begin{align}
+\log p(\bm{\beta}|\mathbf{y}) &= \log p(\mathbf{y}|\bm{\beta}) + \log p(\bm{\beta}) + \text{const} \\
+&= -\frac{1}{2\sigma^2}\|\mathbf{y} - \mathbf{X}\bm{\beta}\|^2 - \frac{\lambda}{2\sigma^2}\bm{\beta}^T\mathbf{S}\bm{\beta} + \text{const} \\
+&= -\frac{1}{2\sigma^2}\left[\|\mathbf{y} - \mathbf{X}\bm{\beta}\|^2 + \lambda\bm{\beta}^T\mathbf{S}\bm{\beta}\right] + \text{const}
+\end{align}
+
+Maximizing the log-posterior is equivalent to minimizing the penalized least squares criterion.
+\end{proof}
+
+\section{Posterior Distribution}
+
+\subsection{Complete Posterior Derivation}
+
+\begin{theorem}[Posterior Distribution of Coefficients]
+Under the Bayesian model, the posterior distribution is:
+\begin{equation}
+\bm{\beta} | \mathbf{y}, \lambda, \sigma^2 \sim N(\hat{\bm{\beta}}, \mathbf{V}_\beta)
+\end{equation}
+where:
+\begin{align}
+\hat{\bm{\beta}} &= (\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})^{-1}\mathbf{X}^T\mathbf{y} \\
+\mathbf{V}_\beta &= \sigma^2(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})^{-1}
+\end{align}
+\end{theorem}
+
+\begin{proof}
+The log-posterior density is:
+\begin{align}
+\log p(\bm{\beta}|\mathbf{y}, \lambda, \sigma^2) &\propto -\frac{1}{2\sigma^2}\left[\|\mathbf{y} - \mathbf{X}\bm{\beta}\|^2 + \lambda\bm{\beta}^T\mathbf{S}\bm{\beta}\right]
+\end{align}
+
+Expanding the squared norm:
+\begin{align}
+&= -\frac{1}{2\sigma^2}\left[(\mathbf{y} - \mathbf{X}\bm{\beta})^T(\mathbf{y} - \mathbf{X}\bm{\beta}) + \lambda\bm{\beta}^T\mathbf{S}\bm{\beta}\right] \\
+&= -\frac{1}{2\sigma^2}\left[\mathbf{y}^T\mathbf{y} - 2\mathbf{y}^T\mathbf{X}\bm{\beta} + \bm{\beta}^T\mathbf{X}^T\mathbf{X}\bm{\beta} + \lambda\bm{\beta}^T\mathbf{S}\bm{\beta}\right] \\
+&= -\frac{1}{2\sigma^2}\left[\bm{\beta}^T(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})\bm{\beta} - 2\mathbf{y}^T\mathbf{X}\bm{\beta} + \mathbf{y}^T\mathbf{y}\right]
+\end{align}
+
+To complete the square, we need to find $\hat{\bm{\beta}}$ such that:
+\begin{equation}
+\bm{\beta}^T(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})\bm{\beta} - 2\mathbf{y}^T\mathbf{X}\bm{\beta} = (\bm{\beta} - \hat{\bm{\beta}})^T(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})(\bm{\beta} - \hat{\bm{\beta}}) + \text{const}
+\end{equation}
+
+Expanding the right side:
+\begin{align}
+&(\bm{\beta} - \hat{\bm{\beta}})^T(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})(\bm{\beta} - \hat{\bm{\beta}}) \\
+&= \bm{\beta}^T(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})\bm{\beta} - 2\bm{\beta}^T(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})\hat{\bm{\beta}} + \hat{\bm{\beta}}^T(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})\hat{\bm{\beta}}
+\end{align}
+
+Comparing coefficients of $\bm{\beta}$:
+\begin{align}
+-2\mathbf{y}^T\mathbf{X} &= -2\hat{\bm{\beta}}^T(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S}) \\
+\mathbf{X}^T\mathbf{y} &= (\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})\hat{\bm{\beta}} \\
+\hat{\bm{\beta}} &= (\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})^{-1}\mathbf{X}^T\mathbf{y}
+\end{align}
+
+Therefore:
+\begin{equation}
+\log p(\bm{\beta}|\mathbf{y}, \lambda, \sigma^2) \propto -\frac{1}{2\sigma^2}(\bm{\beta} - \hat{\bm{\beta}})^T(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})(\bm{\beta} - \hat{\bm{\beta}})
+\end{equation}
+
+This is the log-density of $N(\hat{\bm{\beta}}, \sigma^2(\mathbf{X}^T\mathbf{X} + \lambda\mathbf{S})^{-1})$.
+\end{proof}
+
+\subsection{Handling the Null Space}
+
+When $\mathbf{S}$ is rank-deficient with null space basis $\mathbf{Z}$:
+
+\begin{theorem}[Mixed Model Representation]
+Decompose $\bm{\beta} = \mathbf{Z}\bm{\alpha} + \mathbf{W}\bm{\gamma}$ where:
+\begin{itemize}
+    \item $\mathbf{Z}$: basis for null space of $\mathbf{S}$ (unpenalized)
+    \item $\mathbf{W}$: basis for range space of $\mathbf{S}$ (penalized)
+\end{itemize}
+Then:
+\begin{align}
+\bm{\alpha} &\sim \text{improper uniform prior} \\
+\bm{\gamma} | \lambda, \sigma^2 &\sim N(\mathbf{0}, \sigma^2\lambda^{-1}\mathbf{I})
+\end{align}
+\end{theorem}
+
+\section{Smoothing Parameter Selection}
+
+\subsection{Generalized Cross-Validation (GCV)}
+
+\begin{definition}[GCV Score]
+\begin{equation}
+\mathcal{V}_g(\lambda) = \frac{n \cdot \text{RSS}(\lambda)}{[n - \tr(\mathbf{A}(\lambda))]^2}
+\end{equation}
+where $\text{RSS}(\lambda) = \|\mathbf{y} - \mathbf{A}(\lambda)\mathbf{y}\|^2$.
+\end{definition}
+
+\begin{theorem}[GCV Approximation to Leave-One-Out CV]
+The leave-one-out CV score is:
+\begin{equation}
+\text{CV}(\lambda) = \frac{1}{n}\sum_{i=1}^n \left(\frac{y_i - \hat{y}_i(\lambda)}{1 - A_{ii}(\lambda)}\right)^2
+\end{equation}
+GCV approximates this by replacing $A_{ii}(\lambda)$ with $\bar{A} = \tr(\mathbf{A})/n$.
+\end{theorem}
+
+\subsection{REML (Restricted Maximum Likelihood)}
+
+\begin{theorem}[REML for Smoothing Parameters]
+The REML criterion maximizes:
+\begin{equation}
+\ell_{REML}(\lambda, \sigma^2) = -\frac{1}{2}\left[\log|\mathbf{V}_y| + \log|\mathbf{X}^T\mathbf{V}_y^{-1}\mathbf{X}| + (\mathbf{y} - \mathbf{X}\hat{\bm{\alpha}})^T\mathbf{V}_y^{-1}(\mathbf{y} - \mathbf{X}\hat{\bm{\alpha}})\right]
+\end{equation}
+where $\mathbf{V}_y = \sigma^2(\mathbf{I} + \lambda^{-1}\mathbf{X}_W\mathbf{X}_W^T)$ and $\hat{\bm{\alpha}}$ are the fixed effects.
+\end{theorem}
+
+\subsection{Full Bayesian Approach}
+
+\begin{definition}[Hierarchical Bayesian Model]
+\begin{align}
+\text{Level 1:} \quad & \mathbf{y} | \bm{\beta}, \sigma^2 \sim N(\mathbf{X}\bm{\beta}, \sigma^2\mathbf{I}) \\
+\text{Level 2:} \quad & \bm{\beta} | \lambda, \sigma^2 \sim N(\mathbf{0}, \sigma^2\lambda^{-1}\mathbf{S}^{-}) \\
+\text{Level 3:} \quad & \lambda \sim \pi(\lambda), \quad \sigma^2 \sim \pi(\sigma^2)
+\end{align}
+\end{definition}
+
+Common hyperprior choices:
+\begin{itemize}
+    \item $\lambda \sim \text{Gamma}(a_\lambda, b_\lambda)$
+    \item $\sigma^2 \sim \text{Inverse-Gamma}(a_\sigma, b_\sigma)$
+    \item $\tau = 1/\lambda \sim \text{Half-Cauchy}(0, \gamma)$
+\end{itemize}
+
+%% APPENDICES %%
+\part{Appendices}
+
+
+
+\end{document}

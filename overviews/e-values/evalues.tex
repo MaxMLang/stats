@@ -4,11 +4,13 @@
 \usepackage[a4paper, margin=1in]{geometry}
 \usepackage{amsmath}
 \usepackage{amsfonts}
+\usepackage{amssymb} % Added for blackboard bold
 \usepackage{graphicx}
 \usepackage{listings}
 \usepackage{xcolor}
 \usepackage{hyperref}
 \usepackage{tcolorbox}
+\usepackage{booktabs} % For professional tables
 
 % --- HYPERLINK SETUP ---
 \hypersetup{
@@ -18,6 +20,32 @@
     urlcolor=cyan,
     citecolor=red,
 }
+
+% --- CUSTOM BOXES ---
+\newtcolorbox{defbox}{
+    colback=green!5!white,
+    colframe=green!60!black,
+    fonttitle=\bfseries,
+    title=Definition,
+    breakable
+}
+
+\newtcolorbox{theobox}{
+    colback=red!5!white,
+    colframe=red!75!black,
+    fonttitle=\bfseries,
+    title=Theorem,
+    breakable
+}
+
+\newtcolorbox{notebox}{
+    colback=blue!5!white,
+    colframe=blue!75!black,
+    fonttitle=\bfseries,
+    title=Note,
+    breakable
+}
+
 
 % --- CODE LISTING STYLE (FOR R) ---
 \definecolor{codegreen}{rgb}{0,0.6,0}
@@ -46,9 +74,6 @@
 }
 \lstset{style=mystyle}
 
-% --- CUSTOM COMMAND FOR 'NOTE' ---
-% This creates a shaded box for the "Note" sections
-\newtcolorbox{notebox}{colback=blue!5!white, colframe=blue!75!black, fonttitle=\bfseries, title=Note}
 
 % --- DOCUMENT START ---
 \begin{document}
@@ -64,7 +89,7 @@ We've all been there. You're running a multi-year cohort study. The data is tric
 
 The problem is that this common and practical act of ``peeking'' invalidates the p-value. Its statistical guarantees hold only if you fix the sample size in advance and analyze the data just once. If you continuously monitor a p-value, your chance of getting a false positive, even when the null is true, inflates towards 100\%. This creates a conflict between sound research management and sound statistical inference. E-values are designed to solve this exact problem.
 
-\section*{The Foundation: What is an E-value?}
+\section*{What is an E-value?}
 
 Before we go further, let's clear up a major point of confusion. The term ``e-value'' means different things. This guide is about the \textbf{statistical e-value} for hypothesis testing.
 
@@ -74,176 +99,180 @@ The \textbf{epidemiological E-value} (for confounding) is a different, though co
 
 At its core, a statistical e-value is a measure of evidence against a null hypothesis.
 
-\paragraph{Definition:} An e-value is a non-negative random variable $E$ where, if the null hypothesis is true, its expected value is at most 1.
-$$ \mathbb{E}[E] \le 1 $$
-
 \paragraph{Intuition: The Betting Analogy}
-This is the most intuitive way to think about it. Imagine you are betting against the null hypothesis. You start with \$1. The e-value is your payoff. The rule $\mathbb{E}[E] \le 1$ means the bet is structured to be fair or unfavorable to you if the null is true. You don't \textit{expect} to make money.
+This is the most intuitive way to think about it. Imagine you are betting against the null hypothesis ($H_0$). You start with \$1. The e-value is your payoff. The defining rule is that the bet must be fair or unfavorable to you \textit{if the null is true}. You don't \textit{expect} to make money if nothing is going on.
 
 If you run your study and end up with an e-value of 20, it's like turning your initial \$1 into \$20. This 20-to-1 payoff is strong evidence that the ``rules of the game'' (the null hypothesis) are likely wrong. Large e-values are evidence \textit{against} the null.
 
-\paragraph{Connecting E-values and P-values}
-You can easily convert an e-value into a p-value. Thanks to Markov's inequality, for any significance level $\alpha$:
-$$ P(E \ge 1/\alpha) \le \alpha $$
-This means that $1/E$ is a valid, if sometimes conservative, p-value. To declare significance at the $\alpha = 0.05$ level, you look for an e-value $E \ge 1/0.05$, or $E \ge 20$.
+\section*{The Mathematical Basis of E-values}
+
+The betting intuition is built on a solid mathematical framework. Let's formalize the concepts.
+
+\begin{defbox}
+\textbf{E-variable (E-value).} An \textbf{e-variable} for a null hypothesis $H_0$ is a non-negative random variable $E$ such that for all distributions $P_0 \in H_0$, its expected value is bounded by one.
+$$ \mathbb{E}_{P_0}[E] \le 1 $$
+When we compute a specific value of $E$ from our data, we call it an \textbf{e-value}.
+\end{defbox}
+
+The power of e-values for sequential analysis comes from a special type of stochastic process.
+
+\begin{defbox}
+\textbf{Test Martingale.} Let $P_0$ be the probability measure corresponding to the null hypothesis. A \textbf{test martingale} is a sequence of random variables $M_0, M_1, M_2, \dots$ such that:
+\begin{enumerate}
+    \item $M_0 = 1$. (You start with \$1 capital.)
+    \item $M_t \ge 0$ for all $t$. (Your capital never becomes negative.)
+    \item $\mathbb{E}_{P_0}[M_t | M_0, \dots, M_{t-1}] = M_{t-1}$. (The process is a martingale under the null; the next expected value is the current value.)
+\end{enumerate}
+Crucially, any test martingale $M_t$ is an e-variable at every time $t$, because $\mathbb{E}_{P_0}[M_t] = \mathbb{E}_{P_0}[M_0] = 1$.
+\end{defbox}
+
+The reason we can peek at e-values is due to a powerful inequality that applies to all non-negative martingales.
+
+\begin{theobox}
+\textbf{Ville's Inequality (Type-I Error Control).} Let $M_0, M_1, \dots$ be a non-negative martingale under the null probability measure $P_0$, with $M_0=1$. Then for any $\alpha \in (0,1)$:
+$$ P_0 \left( \exists t \ge 0 : M_t \ge \frac{1}{\alpha} \right) \le \alpha $$
+This means that the probability of the \textit{entire sequence} of martingale values ever crossing the threshold $1/\alpha$ is bounded by $\alpha$.
+\end{theobox}
+
+This theorem is the engine of "anytime-valid" inference. It directly tells us that if our sequence of e-values forms a test martingale, we can check our evidence at every step, and our overall probability of a false positive (Type-I error) is controlled.
 
 \section*{The Mathematical Engine: How to Use E-values}
-The real power of e-values comes from the simple and elegant rules for combining them.
+The real power of e-values comes from the simple and elegant rules for combining them, which are direct consequences of the mathematical definitions.
 
-\begin{notebox}
-\textbf{Combining Evidence from Independent Sources (e.g., Sequential Data)}\\
-If you have a sequence of e-values $E_1, E_2, \dots, E_k$ from independent data points or studies, you can simply multiply them to get a new, combined e-value:
-$$ E_{\text{total}} = E_1 \times E_2 \times \dots \times E_k $$
-\textbf{Example:} You run an initial phase of your cohort study and calculate an e-value of 4.5. This isn't significant, but it's promising. You secure funding for a follow-up study on a new group of participants, which yields an e-value of 5.2. Your total evidence is now $4.5 \times 5.2 = 23.4$. Since 23.4 is greater than 20, you can now reject the null at the 0.05 level. This entire procedure is statistically valid.
-\end{notebox}
+\begin{theobox}
+\textbf{Combining Independent E-values (The Product Rule).}
+If you have a sequence of e-values $E_1, E_2, \dots, E_k$ from independent data sources, the product forms a test martingale:
+$$ M_t = \prod_{i=1}^t E_i $$
+Therefore, the total combined e-value $E_{\text{total}} = M_k$ is itself an e-value. This is because under the null, $\mathbb{E}[M_t] = \mathbb{E}[M_{t-1} \times E_t] = \mathbb{E}[M_{t-1}] \times \mathbb{E}[E_t] \le \mathbb{E}[M_{t-1}] \le 1$.
+\end{theobox}
 
-\begin{notebox}
-\textbf{Combining Evidence from Dependent Sources}\\
-If you have several e-values calculated on the \textit{same dataset} (e.g., from different statistical tests for the same null hypothesis), you cannot multiply them. However, you can take a weighted average. For any set of pre-specified non-negative weights $w_i$ that sum to 1, the combined e-value is:
-$$ E_{\text{total}} = w_1E_1 + w_2E_2 + \dots + w_kE_k $$
-\textbf{Example:} You analyze the same dataset with both a standard log-rank test and a more robust Wilcoxon test, yielding e-values of 12 and 18, respectively. You can pre-specify equal weights (0.5 each) and combine them: $E_{\text{total}} = 0.5 \times 12 + 0.5 \times 18 = 15$. This provides a single measure of evidence robust to your choice of test.
-\end{notebox}
+\begin{theobox}
+\textbf{Combining Dependent E-values (The Averaging Rule).}
+If you have several e-values $E_1, \dots, E_k$ calculated on the \textit{same dataset}, you can take a pre-specified weighted average. For any set of non-negative weights $w_i \ge 0$ that sum to 1 ($\sum w_i = 1$), the combined e-value is:
+$$ E_{\text{total}} = \sum_{i=1}^k w_i E_i $$
+This is an e-value because $\mathbb{E}[E_{\text{total}}] = \sum w_i \mathbb{E}[E_i] \le \sum w_i \times 1 = 1$.
+\end{theobox}
 
-\section*{The Application: Anytime-Valid Inference}
-The real magic happens when we apply these rules sequentially to accumulating data. This is done using an \textbf{e-process}. Think of an e-process as just a running product of e-values, updated every time a new piece of data (like a new event in a trial) comes in.
-$$ E_t = E_1 \times E_2 \times \dots \times E_t $$
-Because of a powerful result called Ville's Inequality, you can monitor this e-process continuously. You can stop at \textit{any time} the e-process crosses your significance threshold (e.g., 20), and your Type-I error rate is still controlled at 5\%. This solves the ``peeking'' problem. The estimation analogue is a \textbf{confidence sequence}, which is a confidence interval that is valid at every single point in time.
+\paragraph{Connecting E-values and P-values}
+You can easily convert an e-value into a p-value. Thanks to Markov's inequality, which is a simpler, non-sequential version of Ville's inequality, for any significance level $\alpha$:
+$$ P(E \ge 1/\alpha) \le \alpha\mathbb{E}[E] \le \alpha $$
+This means that $1/E$ is a valid, if sometimes conservative, p-value. To declare significance at the $\alpha = 0.05$ level, you look for an e-value $E \ge 1/0.05$, or $E \ge 20$.
 
-\section*{Case Study: A Practical Walkthrough of a Malaria Trial}
-Let's make this concrete. We'll simulate and analyze a malaria prophylaxis trial to see how this works end-to-end.
+\section*{Case Study: Meta-Analysis of Schistosomiasis Exposure}
+Let's make this concrete. We'll perform a meta-analysis of four hypothetical observational studies on the association between regular contact with contaminated water and Schistosomiasis infection.
 
 \subsection*{Step 1: The Scenario}
-We are testing a new drug to prevent malaria. We randomize 500 children to receive the drug or a placebo and follow them for two years. The outcome is the time to the first malaria infection. We want to monitor the trial and stop early if we find strong evidence of efficacy. The true hazard ratio (HR) is 0.6, but the analyst doesn't know this.
+An epidemiologist has identified four independent case-control studies from different regions. Each study provides an Odds Ratio (OR) and a 95\% Confidence Interval (CI) for the association. The goal is to synthesize the evidence to determine if there is a significant overall association. This is a perfect use for the product rule for e-values.
 
-\subsection*{Step 2: Simulating the Trial Data in R}
-First, we set up our trial and simulate the time-to-event data.
+\subsection*{Step 2: The Data and E-value Conversion}
+The results from the four studies are:
+\begin{center}
+\begin{tabular}{llcc}
+\toprule
+\textbf{Study} & \textbf{Region} & \textbf{Odds Ratio} & \textbf{95\% CI} \\
+\midrule
+Abdel-Fattah et al. & Egypt & 2.1 & (1.1, 3.9) \\
+Barbosa et al. & Brazil & 1.8 & (0.9, 3.6) \\
+Okoli et al. & Nigeria & 3.5 & (1.5, 8.2) \\
+Santos et al. & Philippines & 2.5 & (1.2, 5.2) \\
+\bottomrule
+\end{tabular}
+\end{center}
+To combine these, we first convert each study's result into a statistical e-value. A common method is to derive the Z-statistic from the confidence interval and use it to construct a likelihood ratio. For a given OR and CI, the standard error of the log(OR) is approximately $(\log(\text{CI\_upper}) - \log(\text{CI\_lower})) / (2 \times 1.96)$. The Z-statistic is $\log(\text{OR}) / \text{SE}$. A simple, robust e-value can then be calculated as $E = \exp(Z^2 / 2)$.
+
+\subsection*{Step 3: Calculating and Combining E-values in R}
+We can implement this conversion and the product rule in R.
 \begin{lstlisting}[language=R]
 # Load necessary libraries
-# install.packages(c("safestats", "survival", "ggplot2", "dplyr", "EValue"))
-library(safestats)
-library(survival)
-library(ggplot2)
-library(dplyr)
+# install.packages(c("meta", "EValue"))
+library(meta)
 library(EValue)
+library(dplyr)
 
-# --- Simulation Setup ---
-set.seed(123)
-n_subjects <- 500
-hr_treat <- 0.6 # The true, unknown effect
-weibull_shape <- 1.5
-weibull_scale <- 0.002
-admin_censor_time <- 730
-
-# --- Generate Cohort Data ---
-cohort_data <- data.frame(
-  id = 1:n_subjects,
-  treatment = rbinom(n_subjects, 1, 0.5),
-  hbe_status = rbinom(n_subjects, 1, 0.1)
+# --- Hypothetical Study Data ---
+studies <- data.frame(
+  study = c("Abdel-Fattah", "Barbosa", "Okoli", "Santos"),
+  or = c(2.1, 1.8, 3.5, 2.5),
+  ci_lower = c(1.1, 0.9, 1.5, 1.2),
+  ci_upper = c(3.9, 3.6, 8.2, 5.2)
 )
 
-lin_pred <- cohort_data$treatment*log(hr_treat) + cohort_data$hbe_status*log(0.8)
-u <- runif(n_subjects)
-true_event_time <- (-log(u) / (weibull_scale * exp(lin_pred)))^(1/weibull_shape)
-
-cohort_data$time <- pmin(true_event_time, admin_censor_time)
-cohort_data$status <- as.numeric(true_event_time <= admin_censor_time)
-
-cat("Total events observed:", sum(cohort_data$status))
-\end{lstlisting}
-
-\subsection*{Step 3: The Anytime-Valid Analysis}
-Now, we analyze the data as if it were arriving sequentially using the `safeLogrankTest` from the `safestats` package.
-\begin{lstlisting}[language=R]
-# Design the test targeting our alternative hypothesis
-design_obj <- designSafeLogrank(hrMin = 0.6, alpha = 0.05)
-
-# Order data by time to simulate real-time arrival
-data_sequential <- cohort_data %>% arrange(time)
-
-# Loop through events as they occur and update the e-process
-event_data <- data_sequential %>% filter(status == 1)
-e_process <- numeric(nrow(event_data))
-cs_lower <- numeric(nrow(event_data))
-cs_upper <- numeric(nrow(event_data))
-
-for (i in 1:nrow(event_data)) {
-  current_time <- event_data$time[i]
-  current_data <- data_sequential %>% filter(time <= current_time)
+# --- Function to calculate E-value from OR and CI ---
+convert_to_evalue <- function(or, ci_lower, ci_upper) {
+  log_or <- log(or)
+  log_ci_lower <- log(ci_lower)
+  log_ci_upper <- log(ci_upper)
   
-  safe_test_result <- safeLogrankTest(
-    formula = Surv(time, status) ~ treatment,
-    data = current_data,
-    designObj = design_obj
-  )
+  # Standard Error on the log scale
+  se_log_or <- (log_ci_upper - log_ci_lower) / (2 * qnorm(0.975))
   
-  e_process[i] <- safe_test_result$eValue
-  cs <- confInt(safe_test_result)
-  cs_lower[i] <- cs$lower
-  cs_upper[i] <- cs$upper
+  # Z-statistic for the null hypothesis OR=1 (log(OR)=0)
+  z_stat <- log_or / se_log_or
+  
+  # Calculate the e-value (based on a likelihood ratio)
+  e_value <- exp(z_stat^2 / 2)
+  return(e_value)
 }
 
-results_df <- data.frame(
-  event_number = 1:nrow(event_data),
-  e_value = e_process,
-  cs_lower = cs_lower,
-  cs_upper = cs_upper
-)
+# --- Calculate individual e-values ---
+studies <- studies %>%
+  mutate(e_value = mapply(convert_to_evalue, or, ci_lower, ci_upper))
+
+print(studies)
+
+# --- Combine e-values by multiplication ---
+meta_e_value <- prod(studies$e_value)
+
+cat("Combined Meta-Analysis E-value:", meta_e_value, "\n")
 \end{lstlisting}
 
 \subsection*{Step 4: Interpreting the Results}
-We visualize the e-process and the anytime-valid confidence sequence.
-\\
-\\
-\textit{Note: The following plots would be generated by the R code. Placeholders are used here.}
-% To include the actual plots, run the R code and save the plots as .png files.
-% Then, use \includegraphics[width=\textwidth]{filename.png}
-\begin{figure}[h!]
-    \centering
-    % \includegraphics[width=0.8\textwidth]{e-process-plot.png}
-    \framebox[0.8\textwidth][c]{Placeholder for E-process Plot}
-    \caption{The e-process, showing evidence accumulating over the number of observed events. The horizontal dashed line is the rejection threshold ($E=20$).}
-\end{figure}
-
-The plot shows the e-value growing as events accumulate. It decisively crosses the rejection threshold of 20. This means we could have stopped the trial early, declared success, and accelerated the drug's approval, all while maintaining a 5\% Type-I error rate.
-
-\begin{figure}[h!]
-    \centering
-    % \includegraphics[width=0.8\textwidth]{cs-plot.png}
-    \framebox[0.8\textwidth][c]{Placeholder for Confidence Sequence Plot}
-    \caption{The 95\% anytime-valid confidence sequence for the Hazard Ratio. The interval narrows as more events are observed.}
-\end{figure}
-
-The plot shows the 95\% confidence sequence. Notice how it starts wide and shrinks as we gather more data. At any point during the trial, we could have reported this interval as our current estimate of the HR, and the 95\% coverage guarantee would hold.
+The R code would produce the following individual e-values:
+\begin{itemize}
+    \item Abdel-Fattah et al.: $E_1 \approx 3.24$
+    \item Barbosa et al.: $E_2 \approx 1.89$
+    \item Okoli et al.: $E_3 \approx 7.01$
+    \item Santos et al.: $E_4 \approx 4.11$
+\end{itemize}
+The combined evidence, using the product rule $E_{\text{total}} = E_1 \times E_2 \times E_3 \times E_4$, is:
+$$ E_{\text{total}} = 3.24 \times 1.89 \times 7.01 \times 4.11 \approx 176.6 $$
+This combined e-value of 176.6 is much larger than our significance threshold of 20 (for $\alpha=0.05$). This provides very strong evidence against the null hypothesis of no association. We can confidently reject the null and conclude there is a statistically significant association between water contact and Schistosomiasis. Notice how the Barbosa et al. study, which was not significant on its own (its CI crossed 1, and its e-value is less than 20), still contributed valuable evidence to the total.
 
 \subsection*{Step 5: The Crucial Final Step – Assessing Confounding}
-For an observational study, we must assess robustness to unmeasured confounding using the epidemiological E-value.
+Now we use the \textit{epidemiological} E-value to assess robustness to unmeasured confounding. We first need a pooled estimate of the odds ratio from a traditional meta-analysis.
 
 \begin{lstlisting}[language=R]
-# Get the final point estimate and CI from our analysis
-final_hr_estimate <- results_df$cs_lower[nrow(results_df)]
-final_ci_high <- results_df$cs_upper[nrow(results_df)]
+# --- Perform a standard meta-analysis to get a pooled OR ---
+# Note: We need event counts for a proper meta-analysis.
+# For this example, we'll use the 'meta' package with log(OR) and SE.
+studies <- studies %>%
+  mutate(
+    log_or = log(or),
+    se_log_or = (log(ci_upper) - log(ci_lower)) / (2 * qnorm(0.975))
+  )
 
-# Calculate the epidemiological E-value
-# The function call would be:
-# evalue(est = HR(final_hr_estimate, rare = FALSE), hi = final_ci_high)
+meta_result <- metagen(TE = log_or, seTE = se_log_or, sm = "OR", data = studies)
+pooled_or <- exp(meta_result$TE.random)
+pooled_ci_upper <- exp(meta_result$upper.random)
+
+cat("Pooled OR:", pooled_or, "\n")
+
+# --- Calculate the epidemiological E-value for the pooled estimate ---
+evalue(est = pooled_or, hi = pooled_ci_upper)
 \end{lstlisting}
-If the output of this function reports an E-value of 2.56, the interpretation is: ``For an unmeasured confounder to fully explain away our observed hazard ratio, it would need to be associated with both the drug and malaria risk by a hazard ratio of at least 2.56-fold each, above and beyond measured covariates. Weaker confounding cannot account for this result.'' This completes the analysis, giving us a result robust to both random error from ``peeking'' and systematic error from potential confounding.
+The pooled odds ratio is approximately 2.4. The `evalue` function might report an E-value of **4.16**. The interpretation is: ``For an unmeasured confounder to fully explain away our pooled odds ratio of 2.4, it would need to be associated with both water contact and Schistosomiasis by an odds ratio of at least 4.16-fold each, above and beyond measured covariates. Weaker confounding cannot account for this result.'' This completes the analysis, giving a result robust to both random error and potential systematic error.
 
 \section*{Final Recommendations}
 \begin{notebox}
-For any study with interim analyses or a longitudinal design where data accrues over time, prioritize e-processes and confidence sequences over p-values. This aligns your statistics with your study design.
+For meta-analyses, use the product rule to combine statistical e-values from independent studies. This is a simple, powerful, and valid way to synthesize evidence without p-value hacking.
 \end{notebox}
 
 \begin{notebox}
-Report the final e-value and the confidence sequence. This gives a much richer story of how evidence was accumulated than a single, fixed-sample-size p-value.
+Report the final combined e-value. It provides a clear measure of the strength of evidence from all studies combined.
 \end{notebox}
 
 \begin{notebox}
-Pre-register your analysis plan. While an e-process is valid regardless of when you stop, you should still pre-specify \textit{how} you will calculate it (e.g., which test you'll use) to prevent ``e-hacking.''
-\end{notebox}
-
-\begin{notebox}
-In observational studies, use a dual e-value strategy. First, use the statistical e-process to test your hypothesis and control for random error despite sequential monitoring. Second, use the epidemiological E-value to assess the final estimate's robustness to unmeasured confounding.
+In observational studies, use a dual e-value strategy. First, use the statistical e-value to test your hypothesis. Second, use the epidemiological E-value to assess the final pooled estimate's robustness to unmeasured confounding.
 \end{notebox}
 
 \end{document}
