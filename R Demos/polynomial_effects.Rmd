@@ -1,0 +1,659 @@
+---
+title: "Orthogonal vs Raw Polynomials in Logistic Regression: A Comprehensive Mathematical Treatment"
+author: "Statistical Analysis"
+date: "`r Sys.Date()`"
+output: 
+  html_document:
+    toc: true
+    toc_float: true
+    theme: united
+    toc_depth: 3
+editor_options: 
+  markdown: 
+    wrap: 72
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, warning = FALSE, message = FALSE)
+library(tidyverse)
+library(knitr)
+library(broom)
+library(gridExtra)
+library(car)
+library(Matrix)
+library(corrplot)
+```
+
+# 1. Introduction
+
+-   Orthogonal polynomials (using `poly()`) vs (using `I(age^2)`) in
+    logistic regression models.
+
+-   Variance-covariance structure
+
+-   Marginal Effects
+
+# 2. Model Specification with Multiple Predictors
+
+## 2.1 Complete Model Specification
+
+Consider a logistic regression model with:
+
+-   A quadratic effect for age (continuous)
+
+-   Income as an additional continuous predictor
+
+-   Education level as a categorical predictor (3 levels: High School,
+    Bachelor's, Graduate)
+
+### Raw Polynomial Specification
+
+$$\log\left(\frac{p}{1-p}\right) = \beta_0 + \beta_1 \cdot \text{age} + \beta_2 \cdot \text{age}^2 + \beta_3 \cdot \text{income} + \beta_4 \cdot I(\text{edu}=\text{Bachelor's}) + \beta_5 \cdot I(\text{edu}=\text{Graduate})$$
+
+### Orthogonal Polynomial Specification
+
+$$\log\left(\frac{p}{1-p}\right) = \beta_0 + \beta_1 \cdot P_1(\text{age}) + \beta_2 \cdot P_2(\text{age}) + \beta_3 \cdot \text{income} + \beta_4 \cdot I(\text{edu}=\text{Bachelor's}) + \beta_5 \cdot I(\text{edu}=\text{Graduate})$$
+
+## 2.2 Design Matrices
+
+### Raw Polynomial Design Matrix
+
+$$\mathbf{X}_{\text{raw}} = \begin{bmatrix} 
+1 & x_{1,\text{age}} & x_{1,\text{age}}^2 & x_{1,\text{income}} & I_{1,\text{Bach}} & I_{1,\text{Grad}} \\
+1 & x_{2,\text{age}} & x_{2,\text{age}}^2 & x_{2,\text{income}} & I_{2,\text{Bach}} & I_{2,\text{Grad}} \\
+\vdots & \vdots & \vdots & \vdots & \vdots & \vdots \\
+1 & x_{n,\text{age}} & x_{n,\text{age}}^2 & x_{n,\text{income}} & I_{n,\text{Bach}} & I_{n,\text{Grad}}
+\end{bmatrix}$$
+
+### Orthogonal Polynomial Design Matrix
+
+$$\mathbf{X}_{\text{orth}} = \begin{bmatrix} 
+1 & P_1(x_{1,\text{age}}) & P_2(x_{1,\text{age}}) & x_{1,\text{income}} & I_{1,\text{Bach}} & I_{1,\text{Grad}} \\
+1 & P_1(x_{2,\text{age}}) & P_2(x_{2,\text{age}}) & x_{2,\text{income}} & I_{2,\text{Bach}} & I_{2,\text{Grad}} \\
+\vdots & \vdots & \vdots & \vdots & \vdots & \vdots \\
+1 & P_1(x_{n,\text{age}}) & P_2(x_{n,\text{age}}) & x_{n,\text{income}} & I_{n,\text{Bach}} & I_{n,\text{Grad}}
+\end{bmatrix}$$
+
+# 3. Mathematical Derivation of Orthogonal Polynomials
+
+## 3.1 Construction of Orthogonal Polynomials
+
+The orthogonal polynomials are constructed using the Gram-Schmidt
+process (a slight modified version is used for numeric stability,
+especially rounding errors are problematic) . For a quadratic
+polynomial:
+
+**Step 1:** Start with the raw basis: $\{1, x, x^2\}$
+
+**Step 2:** Orthogonalize: - $P_0(x) = 1$ - $P_1(x) = x - \bar{x}$
+(centering) -
+$P_2(x) = (x - \bar{x})^2 - \frac{\sum_{i=1}^n (x_i - \bar{x})^2 \cdot (x_i - \bar{x})}{\sum_{i=1}^n (x_i - \bar{x})^2}$
+
+**Step 3:** Normalize to have unit variance: -
+$\tilde{P}_1(x) = \frac{P_1(x)}{\sqrt{\text{Var}(P_1(x))}}$ -
+$\tilde{P}_2(x) = \frac{P_2(x)}{\sqrt{\text{Var}(P_2(x))}}$
+
+### 3.1.1 Worked Example (Source: Math Stackexchange, adjusted)
+
+Suppose we have the following set of 5 data points for $x$:
+$\{1, 2, 3, 4, 5\}$
+
+### Step 1: Start with the Basis and Data
+
+-   **Basis:** $\{1, x, x^2\}$
+-   **Data (**$x_i$): $\{1, 2, 3, 4, 5\}$
+-   **n (number of points):** 5
+
+First, let's calculate the mean of $x$:
+$\bar{x} = \frac{1+2+3+4+5}{5} = \frac{15}{5} = 3$
+
+### Step 2: Construct Orthogonal Polynomials
+
+#### $P_0(x) = 1$
+
+This is our first polynomial. For every data point, its value is simply
+1.
+
+-   **Values of** $P_0(x_i)$: $\{1, 1, 1, 1, 1\}$
+
+#### $P_1(x) = x - \bar{x}$
+
+$P_1(x) = x - 3$ We apply this formula to each of our $x_i$ values:
+
+-   As follows: $P_1(1) = 1 - 3 = -2$
+-   As follows: $P_1(2) = 2 - 3 = -1$
+-   As follows: $P_1(3) = 3 - 3 = 0$
+-   As follows: $P_1(4) = 4 - 3 = 1$ -$P_1(5) = 5 - 3 = 2$
+-   As follows: **Values of** $P_1(x_i)$: $\{-2, -1, 0, 1, 2\}$
+
+*(You can see that these values are orthogonal to* $P_0(x)$ because
+their sum is 0:
+$\sum P_0(x_i)P_1(x_i) = 1(-2) + 1(-1) + 1(0) + 1(1) + 1(2) = 0$)
+
+#### $P_2(x) = (x - \bar{x})^2 - \frac{\sum (x_i - \bar{x})^3}{\sum (x_i - \bar{x})^2}$
+
+First, let's calculate the two summation terms in the fraction:
+
+-   The denominator is the sum of squared values of $P_1(x_i)$:
+    $\sum (x_i - \bar{x})^2 = (-2)^2 + (-1)^2 + 0^2 + 1^2 + 2^2 = 4 + 1 + 0 + 1 + 4 = 10$
+-   The numerator is the sum of cubed values of $P_1(x_i)$:
+    $\sum (x_i - \bar{x})^3 = (-2)^3 + (-1)^3 + 0^3 + 1^3 + 2^3 = -8 - 1 + 0 + 1 + 8 = 0$
+
+The fraction is $\frac{0}{10} = 0$. So the formula for $P_2(x)$
+simplifies for this particular (symmetric) dataset:
+$P_2(x) = (x - 3)^2 - 0 = (x-3)^2$
+
+Now we apply this to each $x_i$:
+
+-   $P_2(1) = (1-3)^2 = 4$
+-   $P_2(2) = (2-3)^2 = 1$
+-   $P_2(3) = (3-3)^2 = 0$
+-   $P_2(4) = (4-3)^2 = 1$
+-   $P_2(5) = (5-3)^2 = 4$
+-   **Values of** $P_2(x_i)$: $\{4, 1, 0, 1, 4\}$
+
+### Step 3: Normalize to Unit Variance
+
+Now we scale $P_1$ and $P_2$ so their resulting values have a variance
+of 1.
+
+#### **Normalize** $P_1(x)$
+
+First, find the variance of the values of $P_1(x_i)$:
+$\{-2, -1, 0, 1, 2\}$
+$\text{Var}(P_1(x)) = \frac{(-2-0)^2 + (-1-0)^2 + (0-0)^2 + (1-0)^2 + (2-0)^2}{5-1} = \frac{4+1+0+1+4}{4} = \frac{10}{4} = 2.5$
+(Note: The mean of $P_1(x_i)$ is 0. We use a denominator of $n-1=4$ for
+sample variance.)
+
+The standard deviation is $\sqrt{2.5} \approx 1.581$.
+$\tilde{P}_1(x) = \frac{P_1(x)}{\sqrt{2.5}}$ \* **Values of**
+$\tilde{P}_1(x_i)$: $\{-1.265, -0.632, 0, 0.632, 1.265\}$
+
+#### **Normalize** $P_2(x)$
+
+First, find the variance of the values of $P_2(x_i)$:
+$\{4, 1, 0, 1, 4\}$ The mean of these values is
+$\frac{4+1+0+1+4}{5} = 2$.
+$\text{Var}(P_2(x)) = \frac{(4-2)^2 + (1-2)^2 + (0-2)^2 + (1-2)^2 + (4-2)^2}{5-1} = \frac{4+1+4+1+4}{4} = \frac{14}{4} = 3.5$
+
+The standard deviation is $\sqrt{3.5} \approx 1.871$.
+$\tilde{P}_2(x) = \frac{P_2(x) - \overline{P_2(x)}}{\sqrt{3.5}}$
+*(Important: We must center* $P_2$ before scaling) \* **Values of**
+$\tilde{P}_2(x_i)$: $\{1.069, -0.535, -1.069, -0.535, 1.069\}$
+
+This final set of values for $\{\tilde{P}_1, \tilde{P}_2\}$ represents
+the evaluated orthonormal polynomials at our specific data points.
+
+## 3.2 Orthogonality Property
+
+The key property is:
+$$\sum_{i=1}^n \tilde{P}_j(x_i) \tilde{P}_k(x_i) = \begin{cases} 
+n & \text{if } j = k \\
+0 & \text{if } j \neq k 
+\end{cases}$$
+
+This ensures $\mathbf{X}_{\text{orth}}^T\mathbf{X}_{\text{orth}}$ has
+zero off-diagonal elements for the polynomial terms.
+
+# 4. Variance-Covariance Matrices and Multicollinearity
+
+## 4.1 Reminder Covariance Matrix
+
+$$\text{Var}(\hat{\boldsymbol{\beta}}) = (\mathbf{X}^T\mathbf{W}\mathbf{X})^{-1}$$
+
+where $\mathbf{W} = \text{diag}(p_i(1-p_i))$ is the weight matrix from
+the iteratively reweighted least squares algorithm. This is important
+for Confidence Intervals (and therefore also for p-values). Intuitively
+CIs will become more unstable if colinear.
+
+## 4.2 Explicit Computation and Visualization
+
+```{r variance-covariance-setup}
+# Generate data
+set.seed(123)
+n <- 1000
+age <- runif(n, 20, 80)
+income <- rnorm(n, 50000, 20000)
+education <- sample(c("High School", "Bachelor's", "Graduate"), n, 
+                   replace = TRUE, prob = c(0.4, 0.4, 0.2))
+
+# Create design matrices
+X_raw <- model.matrix(~ age + I(age^2) + income + education)
+X_orth <- model.matrix(~ poly(age, 2) + income + education)
+
+# Generate outcome
+logit_true <- -2 + 0.1*age - 0.001*age^2 + 0.00001*income + 
+              0.5*(education == "Bachelor's") + 1*(education == "Graduate")
+p_true <- plogis(logit_true)
+y <- rbinom(n, 1, p_true)
+
+# Fit models
+model_raw <- glm(y ~ age + I(age^2) + income + education, family = binomial)
+model_orth <- glm(y ~ poly(age, 2) + income + education, family = binomial)
+
+# Extract variance-covariance matrices
+vcov_raw <- vcov(model_raw)
+vcov_orth <- vcov(model_orth)
+
+# Correlation matrices from variance-covariance
+cor_raw <- cov2cor(vcov_raw)
+cor_orth <- cov2cor(vcov_orth)
+```
+
+### 4.2.1 Raw Polynomial Model Variance-Covariance Matrix
+
+```{r vcov-raw-display}
+# Display variance-covariance matrix for raw model
+vcov_raw_display <- round(vcov_raw[1:4, 1:4], 6)  # First 4 parameters
+rownames(vcov_raw_display) <- colnames(vcov_raw_display) <- 
+  c("Intercept", "age", "age²", "income")
+
+kable(vcov_raw_display, 
+      caption = "Variance-Covariance Matrix: Raw Polynomial Model (first 4 parameters)")
+
+# Visualize correlation structure
+par(mfrow = c(1, 2))
+corrplot(cor_raw[1:4, 1:4], method = "color", type = "upper", 
+         title = "Parameter Correlations: Raw Model", 
+         mar = c(0,0,2,0))
+```
+
+### 4.2.2 Orthogonal Polynomial Model Variance-Covariance Matrix
+
+```{r vcov-orth-display}
+# Display variance-covariance matrix for orthogonal model
+vcov_orth_display <- round(vcov_orth[1:4, 1:4], 6)
+rownames(vcov_orth_display) <- colnames(vcov_orth_display) <- 
+  c("Intercept", "poly(age)1", "poly(age)2", "income")
+
+kable(vcov_orth_display, 
+      caption = "Variance-Covariance Matrix: Orthogonal Polynomial Model (first 4 parameters)")
+
+corrplot(cor_orth[1:4, 1:4], method = "color", type = "upper", 
+         title = "Parameter Correlations: Orthogonal Model", 
+         mar = c(0,0,2,0))
+```
+
+# 4. Marginal Effects
+
+## 4.1 Definition and Interpretation
+
+The marginal effect represents the "instantaneous" rate of change in the
+outcome with respect to a predictor. For logistic regression on the
+**log-odds scale**:
+
+$$ME_{\text{log-odds}}(x_k) = \frac{\partial}{\partial x_k} \log\left(\frac{p}{1-p}\right) = \frac{\partial \eta}{\partial x_k}$$
+
+where $\eta$ is the linear predictor.
+
+## 4.2 Infinitesimal Approximation
+
+The derivative can be approximated using the definition:
+
+$$\frac{\partial f}{\partial x} = \lim_{h \to 0} \frac{f(x + h) - f(x)}{h}$$
+
+In practice, we use a small $\epsilon$ (e.g., $\epsilon = 0.001$):
+
+$$ME(x) \approx \frac{f(x + \epsilon) - f(x)}{\epsilon}$$
+
+## 4.3 Marginal Effects for Different Model Specifications
+
+### 4.3.1 Raw Polynomial Model
+
+For the model:
+$\eta = \beta_0 + \beta_1 \cdot \text{age} + \beta_2 \cdot \text{age}^2 + \beta_3 \cdot \text{income} + ...$
+
+The marginal effect of age is:
+$$ME_{\text{age}} = \frac{\partial \eta}{\partial \text{age}} = \beta_1 + 2\beta_2 \cdot \text{age}$$
+
+**Key insights:**
+
+-   The marginal effect **depends on the current value of age**
+
+-   It's linear in age with slope $2\beta_2$
+
+-   At age = $-\frac{\beta_1}{2\beta_2}$, the marginal effect is zero
+    (turning point)
+
+-   If the second derivative $f''(x) = 0$ (low bending energy) this can
+    be (carefully) interpreted as the effect of a 1-unit increase.
+
+### Setting Up a Concrete Example
+
+Let's say we've fitted both models and obtained these coefficients:
+
+**Raw Polynomial Model:** - $\beta_1$ (age) = 0.15 - $\beta_2$ (age²) =
+-0.002
+
+**Interpretation at Different Ages:**
+
+#### At Age 30:
+
+$$ME_{\text{age=30}} = 0.15 + 2(-0.002)(30) = 0.15 - 0.12 = 0.03$$
+
+**Interpretation:** At age 30, a one-year increase in age (from 30 to
+31) is associated with an increase of 0.03 in the log-odds of the
+outcome. This means:
+
+-   The odds of the outcome multiply by $e^{0.03} \approx 1.0305$ (about
+    3% increase in odds)
+
+-   If someone aged 30 has 1:1 odds (50% probability), someone aged 31
+    has 1.03:1 odds (about 50.7% probability)
+
+#### At Age 40:
+
+$$ME_{\text{age=40}} = 0.15 + 2(-0.002)(40) = 0.15 - 0.16 = -0.01$$
+
+**Interpretation:** At age 40, a one-year increase in age is associated
+with a decrease of 0.01 in the log-odds. This means: - The odds multiply
+by $e^{-0.01} \approx 0.990$ (about 1% decrease in odds) - The effect of
+aging has reversed - older individuals now have lower odds
+
+#### At the Turning Point (Age 37.5):
+
+$$\text{Turning point} = -\frac{\beta_1}{2\beta_2} = -\frac{0.15}{2(-0.002)} = 37.5$$
+$$ME_{\text{age=37.5}} = 0.15 + 2(-0.002)(37.5) = 0$$
+
+**Interpretation:** At age 37.5, age has no instantaneous effect on the
+log-odds. This is where the relationship changes from positive to
+negative.
+
+### 4.3.2 Orthogonal Polynomial Model
+
+For orthogonal polynomials, the marginal effect calculation is more
+complex because:
+
+$$\frac{\partial \eta}{\partial \text{age}} = \beta_1 \frac{\partial P_1(\text{age})}{\partial \text{age}} + \beta_2 \frac{\partial P_2(\text{age})}{\partial \text{age}}$$
+
+## 4.4 Practical Calculation and Interpretation
+
+```{r marginal-effects-detailed}
+# Function to calculate marginal effects
+calculate_marginal_effect <- function(model, data, var_name, h = 0.001) {
+  # Original prediction
+  pred_original <- predict(model, newdata = data, type = "link")
+  
+  # Increment variable
+  data_plus <- data
+  data_plus[[var_name]] <- data_plus[[var_name]] + h
+  pred_plus <- predict(model, newdata = data_plus, type = "link")
+  
+  # Calculate marginal effect
+  (pred_plus - pred_original) / h
+}
+
+# Calculate marginal effects at different ages
+ages_grid <- seq(20, 80, by = 10)
+me_results <- data.frame()
+
+for (age_val in ages_grid) {
+  # Create test data
+  test_data <- data.frame(
+    age = age_val,
+    income = mean(income),
+    education = "High School"
+  )
+  
+  # Calculate marginal effects
+  me_raw <- calculate_marginal_effect(model_raw, test_data, "age")
+  me_orth <- calculate_marginal_effect(model_orth, test_data, "age")
+  
+  # Analytical calculation for raw model
+  beta1 <- coef(model_raw)["age"]
+  beta2 <- coef(model_raw)["I(age^2)"]
+  me_raw_analytical <- beta1 + 2 * beta2 * age_val
+  
+  me_results <- rbind(me_results, data.frame(
+    Age = age_val,
+    `ME Raw (Numerical)` = me_raw,
+    `ME Raw (Analytical)` = me_raw_analytical,
+    `ME Orthogonal` = me_orth
+  ))
+}
+
+kable(me_results, digits = 4, 
+      caption = "Marginal Effects of Age on Log-Odds Scale")
+```
+
+### 5.4.1 Interpretation Guidelines
+
+**For a marginal effect of 0.05 at age 40:** - A one-year increase in
+age (from 40 to 41) is associated with an increase of 0.05 in the
+log-odds - This translates to multiplying the odds by
+$e^{0.05} \approx 1.051$ (5.1% increase in odds) - The effect on
+probability depends on the baseline probability
+
+### 5.4.2 Converting to Probability Scale
+
+The marginal effect on the probability scale is:
+
+$$ME_{p}(x) = \frac{\partial p}{\partial x} = p(1-p) \cdot ME_{\text{log-odds}}(x)$$
+
+```{r marginal-effects-probability}
+# Calculate marginal effects on probability scale
+me_prob_results <- data.frame()
+
+for (age_val in ages_grid) {
+  test_data <- data.frame(
+    age = age_val,
+    income = mean(income),
+    education = "High School"
+  )
+  
+  # Get predicted probability
+  pred_prob <- predict(model_raw, newdata = test_data, type = "response")
+  
+  # ME on log-odds scale
+  me_logodds <- calculate_marginal_effect(model_raw, test_data, "age")
+  
+  # ME on probability scale
+  me_prob <- pred_prob * (1 - pred_prob) * me_logodds
+  
+  me_prob_results <- rbind(me_prob_results, data.frame(
+    Age = age_val,
+    `Baseline Probability` = pred_prob,
+    `ME (Log-odds)` = me_logodds,
+    `ME (Probability)` = me_prob
+  ))
+}
+
+kable(me_prob_results, digits = 4, 
+      caption = "Marginal Effects on Different Scales")
+```
+
+## 5.5 Visualization of Marginal Effects
+
+```{r marginal-effects-viz}
+# Create detailed marginal effects plot
+age_fine <- seq(20, 80, by = 0.5)
+me_fine <- data.frame()
+
+for (age_val in age_fine) {
+  test_data <- data.frame(
+    age = age_val,
+    income = mean(income),
+    education = "High School"
+  )
+  
+  me_raw <- calculate_marginal_effect(model_raw, test_data, "age")
+  me_orth <- calculate_marginal_effect(model_orth, test_data, "age")
+  
+  # Also get predicted probability for context
+  pred_prob <- predict(model_raw, newdata = test_data, type = "response")
+  
+  me_fine <- rbind(me_fine, data.frame(
+    age = age_val,
+    me_raw = me_raw,
+    me_orth = me_orth,
+    probability = pred_prob
+  ))
+}
+
+# Plot marginal effects
+p1 <- ggplot(me_fine, aes(x = age)) +
+  geom_line(aes(y = me_raw, color = "Raw Polynomial"), size = 1.2) +
+  geom_line(aes(y = me_orth, color = "Orthogonal Polynomial"), size = 1.2) +
+  geom_hline(yintercept = 0, linetype = "dashed", alpha = 0.5) +
+  labs(title = "Marginal Effects of Age on Log-Odds Scale",
+       x = "Age", y = "Marginal Effect (∂η/∂age)",
+       color = "Model Type") +
+  theme_minimal() +
+  theme(legend.position = "bottom")
+
+# Plot predicted probabilities for context
+p2 <- ggplot(me_fine, aes(x = age, y = probability)) +
+  geom_line(size = 1.2, color = "darkblue") +
+  labs(title = "Predicted Probability by Age",
+       x = "Age", y = "Predicted Probability") +
+  theme_minimal()
+
+grid.arrange(p1, p2, ncol = 1)
+```
+
+# 6. Model Performance Comparison
+
+## 6.1 Numerical Stability Analysis
+
+1.  Convergence Rates
+
+-   Does the ML-Algorithm converge.
+
+2.  Standard Error Magnitude
+
+Check maximum standard error among the age coefficients (intercept, age,
+age²). Inflated standard errors indicate multicollinearity and unstable
+estimates.
+
+3.  Three scenarios
+
+-   Normal Range (20-80 years)
+    -   Baseline for comparison: Both models should do well
+-   Narrow Range (40-50 years)
+    -   If age has limited variation, age and age² become highly
+        correlated
+
+        -   Expected problem: Raw polynomials could have severe
+            multicollinearity
+
+    -   Example: If age only varies from 40-50:
+
+        -   age: [40, 41, 42, ..., 50]
+
+        -   $age^2$: [1600, 1681, 1764, ..., 2500]
+-   Wide Range (0-100 years)
+    -    Extreme values can cause numerical overflow/underflow
+
+    -   $age^2$ ranges from 0 to 10,000 - huge scale differences
+
+    -   Matrix inversion will be a pain
+
+```{r stability-analysis}
+# Test numerical stability with extreme cases
+test_stability <- function(age_range, n_sim = 100) {
+  results <- data.frame()
+  
+  for (i in 1:n_sim) {
+    # Generate data with specified age range
+    age_test <- runif(1000, age_range[1], age_range[2])
+    income_test <- rnorm(1000, 50000, 20000)
+    education_test <- sample(c("High School", "Bachelor's", "Graduate"), 
+                            1000, replace = TRUE)
+    
+    # Generate outcome
+    logit_test <- -2 + 0.1*age_test - 0.001*age_test^2 + 
+                  0.00001*income_test + 
+                  0.5*(education_test == "Bachelor's") + 
+                  1*(education_test == "Graduate")
+    p_test <- plogis(logit_test)
+    y_test <- rbinom(1000, 1, p_test)
+    
+    # Try to fit models
+    tryCatch({
+      mod_raw <- glm(y_test ~ age_test + I(age_test^2) + income_test + education_test, 
+                     family = binomial)
+      mod_orth <- glm(y_test ~ poly(age_test, 2) + income_test + education_test, 
+                      family = binomial)
+      
+      results <- rbind(results, data.frame(
+        iteration = i,
+        age_range = paste(age_range, collapse = "-"),
+        converged_raw = mod_raw$converged,
+        converged_orth = mod_orth$converged,
+        max_se_raw = max(summary(mod_raw)$coefficients[1:3, 2]),
+        max_se_orth = max(summary(mod_orth)$coefficients[1:3, 2])
+      ))
+    }, error = function(e) {
+      results <- rbind(results, data.frame(
+        iteration = i,
+        age_range = paste(age_range, collapse = "-"),
+        converged_raw = FALSE,
+        converged_orth = FALSE,
+        max_se_raw = NA,
+        max_se_orth = NA
+      ))
+    })
+  }
+  
+  results
+}
+
+# Test different age ranges
+stability_normal <- test_stability(c(20, 80))
+stability_narrow <- test_stability(c(40, 50))
+stability_wide <- test_stability(c(0, 100))
+
+stability_summary <- rbind(
+  data.frame(
+    `Age Range` = "20-80 (Normal)",
+    `Raw Convergence` = mean(stability_normal$converged_raw),
+    `Orthogonal Convergence` = mean(stability_normal$converged_orth),
+    `Mean Max SE (Raw)` = mean(stability_normal$max_se_raw, na.rm = TRUE),
+    `Mean Max SE (Orth)` = mean(stability_normal$max_se_orth, na.rm = TRUE)
+  ),
+  data.frame(
+    `Age Range` = "40-50 (Narrow)",
+    `Raw Convergence` = mean(stability_narrow$converged_raw),
+    `Orthogonal Convergence` = mean(stability_narrow$converged_orth),
+    `Mean Max SE (Raw)` = mean(stability_narrow$max_se_raw, na.rm = TRUE),
+    `Mean Max SE (Orth)` = mean(stability_narrow$max_se_orth, na.rm = TRUE)
+  ),
+  data.frame(
+    `Age Range` = "0-100 (Wide)",
+    `Raw Convergence` = mean(stability_wide$converged_raw),
+    `Orthogonal Convergence` = mean(stability_wide$converged_orth),
+    `Mean Max SE (Raw)` = mean(stability_wide$max_se_raw, na.rm = TRUE),
+    `Mean Max SE (Orth)` = mean(stability_wide$max_se_orth, na.rm = TRUE)
+  )
+)
+
+kable(stability_summary, digits = 3, 
+      caption = "Numerical Stability Under Different Conditions")
+```
+
+# 8. Matrix Stuff (Red Pill or Blue Pill?)
+
+## 8.1 Proof of Orthogonality Benefits
+
+**Theorem:** For orthogonal design matrix $\mathbf{X}$ where
+$\mathbf{X}^T\mathbf{X} = \text{diag}(d_1, ..., d_p)$, the variance of
+$\hat{\beta}_j$ is minimized.
+
+**Proof:** The variance-covariance matrix is:
+$$\text{Var}(\hat{\boldsymbol{\beta}}) = \sigma^2(\mathbf{X}^T\mathbf{X})^{-1}$$
+
+For orthogonal $\mathbf{X}$:
+$$(\mathbf{X}^T\mathbf{X})^{-1} = \text{diag}(1/d_1, ..., 1/d_p)$$
+
+Thus: $\text{Var}(\hat{\beta}_j) = \sigma^2/d_j$
+
+For non-orthogonal $\mathbf{X}$, off-diagonal elements in
+$(\mathbf{X}^T\mathbf{X})^{-1}$ increase the variance.
+
+## 8.2 Relationship Between Parameterizations
+
+The predictions from both models are identical because:
+
+$$\mathbf{X}_{\text{raw}}\boldsymbol{\beta}_{\text{raw}} = \mathbf{X}_{\text{orth}}\boldsymbol{\beta}_{\text{orth}}$$
+
+This follows from the fact that both span the same column space.

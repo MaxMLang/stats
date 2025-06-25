@@ -1,0 +1,193 @@
+---
+title: "MAUP"
+author: "Max"
+date: "2025-06-23"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Install necessary packages if you haven't already
+# install.packages(c("sf", "tmap", "ggplot2", "dplyr", "tidycensus"))
+
+# Load the packages
+library(sf)
+library(tmap)
+library(ggplot2)
+library(dplyr)
+library(tidycensus)
+
+# Set tmap mode to plotting
+tmap_mode("plot")
+
+# Optional: Set a Census API key if you have one
+# census_api_key("YOUR_API_KEY", install = TRUE)
+```
+
+
+### 1. What is the Modifiable Areal Unit Problem?
+
+The MAUP arises from the fact that the results of analyzing data grouped into geographical areas can change, often, depending on how those areas are defined. This "modifiable" nature of spatial units can lead to different statistical conclusions even when the underlying individual-level data remains the same. The problem is twofold, comprising:
+
+  * Scale Effect: Occurs when the same data are aggregated to different levels of spatial resolution (e.g., from census tracts to counties). The scale of analysis can influence correlations, the significance of statistical tests, and the identification of spatial patterns.
+  * Zoning Effect: Emerges when the boundaries of spatial units are redrawn at the same scale. Different zoning schemes can produce different analytical outcomes, highlighting the arbitrary nature of many administrative or political boundaries.
+
+**Real-world examples** of where the MAUP can have a significant impact include:
+
+  * Public Health: Identifying disease clusters or areas with poor health outcomes can be highly sensitive to the administrative boundaries used for analysis.
+  * Elections: The way voting districts are drawn (gerrymandering) is a classic example of the zoning effect, where the outcome of an election can be manipulated by changing the boundaries of electoral units.
+  * Environmental Justice: Studies examining the relationship between pollution sources and socioeconomic characteristics of neighborhoods can yield different conclusions depending on how "neighborhood" is defined.
+
+
+
+
+### 2. Scale Effect
+
+To illustrate the scale effect, we will examine the relationship between two variables at different levels of aggregation. We will use data for New York City, looking at the relationship between the number of 311 service requests for "rodent" and the total population at both the census tract and borough levels.
+
+First, let's acquire the necessary data. We will download census tract and borough boundaries for NYC and get population data from the American Community Survey (ACS) using the `tidycensus` package. For the rodent complaint data, we'll use a hypothetical dataset for demonstration purposes.
+
+
+```{r}
+# Get census tract and borough boundaries for New York City
+ny_tracts <- get_acs(
+  geography = "tract",
+  variables = "B01003_001", # Total Population
+  state = "NY",
+  county = c("New York", "Kings", "Queens", "Bronx", "Richmond"),
+  geometry = TRUE
+)
+
+ny_boroughs <- get_acs(
+  geography = "county",
+  variables = "B01003_001",
+  state = "NY",
+  county = c("New York", "Kings", "Queens", "Bronx", "Richmond"),
+  geometry = TRUE
+)
+
+# For demonstration, let's generate some random point data for rodent complaints
+set.seed(123)
+rodent_complaints <- st_as_sf(
+  data.frame(
+    lon = runif(1000, -74.25, -73.7),
+    lat = runif(1000, 40.5, 40.9)
+  ),
+  coords = c("lon", "lat"),
+  crs = 4326
+)
+
+# Transform to the same CRS
+ny_tracts <- st_transform(ny_tracts, st_crs(rodent_complaints))
+ny_boroughs <- st_transform(ny_boroughs, st_crs(rodent_complaints))
+
+# Spatially join the rodent complaints to the census tracts and boroughs
+tract_rodents <- st_join(ny_tracts, rodent_complaints, join = st_intersects)
+borough_rodents <- st_join(ny_boroughs, rodent_complaints, join = st_intersects)
+
+# Aggregate the counts
+tract_summary <- tract_rodents %>%
+  group_by(GEOID) %>%
+  summarise(
+    population = first(estimate),
+    rodent_count = n(),
+    geometry = first(geometry)
+  ) %>%
+  st_as_sf()
+
+tract_summary <- tract_summary[!st_is_empty(tract_summary), ]
+
+
+borough_summary <- borough_rodents %>%
+  group_by(GEOID) %>%
+  summarise(
+    population = first(estimate),
+    rodent_count = n(),
+    geometry = first(geometry)
+  ) %>%
+  st_as_sf()
+```
+
+```{r}
+# Map at the census tract level
+tm_shape(tract_summary) +
+  tm_polygons("rodent_count", title = "Rodent Complaints", style = "quantile") +
+  tm_layout(main.title = "Rodent Complaints per Census Tract")
+
+# Map at the borough level
+tm_shape(borough_summary) +
+  tm_polygons("rodent_count", title = "Rodent Complaints", style = "quantile") +
+  tm_layout(main.title = "Rodent Complaints per Borough")
+```
+
+
+```{r}
+# Correlation at the census tract level
+cor_tract <- cor(tract_summary$population, tract_summary$rodent_count)
+print(paste("Correlation at Census Tract level:", round(cor_tract, 3)))
+
+# Correlation at the borough level
+cor_borough <- cor(borough_summary$population, borough_summary$rodent_count)
+print(paste("Correlation at Borough level:", round(cor_borough, 3)))
+```
+
+We observe that the strength of the correlation changes as we move from the finer scale (census tracts) to the coarser scale (boroughs). This is a good demonstration of the **scale effect**.
+
+### 3, Zoning Effect
+
+
+
+```{r}
+# Create two different regular grids over the bounding box of the rodent complaints
+bbox <- st_bbox(rodent_complaints)
+
+grid1 <- st_make_grid(st_as_sfc(bbox), cellsize = 0.05, what = "polygons") %>%
+  st_as_sf() %>%
+  mutate(grid_id = 1:n())
+
+grid2 <- st_make_grid(st_as_sfc(bbox), cellsize = 0.05, what = "polygons", offset = c(bbox$xmin + 0.025, bbox$ymin + 0.025)) %>%
+  st_as_sf() %>%
+  mutate(grid_id = 1:n())
+
+# Spatially join and aggregate data for each grid
+grid1_summary <- st_join(grid1, rodent_complaints, join = st_intersects) %>%
+  group_by(grid_id) %>%
+  summarise(
+    rodent_count = n(),
+    geometry = first(x)
+  ) %>%
+  st_as_sf()
+
+grid2_summary <- st_join(grid2, rodent_complaints, join = st_intersects) %>%
+  group_by(grid_id) %>%
+  summarise(
+    rodent_count = n(),
+    geometry = first(x)
+  ) %>%
+  st_as_sf()
+
+# Visualize the results for both grid systems
+map1 <- tm_shape(grid1_summary) +
+  tm_polygons("rodent_count", title = "Rodent Complaints", style = "quantile") +
+  tm_layout(main.title = "Zoning Scheme 1")
+
+map2 <- tm_shape(grid2_summary) +
+  tm_polygons("rodent_count", title = "Rodent Complaints", style = "quantile") +
+  tm_layout(main.title = "Zoning Scheme 2")
+
+tmap_arrange(map1, map2)
+```
+
+The resulting maps show different spatial patterns of high and low rodent complaint areas, even though the underlying point data is identical. **Zoning effect**: the way in which we draw our boundaries can significantly influence the perceived spatial distribution of a phenomenon.
+
+### 5. Possible Solutions and Recommendations
+
+While there is no single "cure" for the MAUP, several strategies can be employed to mitigate its effects and ensure more robust spatial analysis:
+
+  * Whenever possible, conduct analysis at the most disaggregated level of data. This reduces the impact of aggregation bias.
+  * Test the robustness of your findings by conducting the analysis at multiple scales and with different zoning schemes. If your conclusions hold across various spatial configurations, they are more likely to be reliable.
+  * For phenomena that are not intrinsically tied to administrative boundaries, using regular grids (squares or hexagons) can provide a more neutral and consistent spatial framework.
+  * There are techniques to create "optimal" zones that are internally homogeneous with respect to the variables being studied.
+

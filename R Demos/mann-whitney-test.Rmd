@@ -1,0 +1,417 @@
+---
+title: "Mann-Whitney U Test"
+author: "Max"
+date: "`r Sys.Date()`"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = TRUE, warning = FALSE)
+set.seed(123)
+# --- Load necessary libraries ---
+# install.packages(c("pROC", "effsize", "ggplot2", "gridExtra")) # Run once if not installed
+library(pROC)
+library(effsize)
+library(ggplot2)
+library(gridExtra) # For arranging ggplot objects
+
+# --- Set a seed for reproducibility ---
+set.seed(123) # Consistent seed
+n_obs <- 500  # Number of observations per group
+
+# --- Group 1: Control Mice (Gamma Distribution) ---
+shape1 <- 2 # Your updated shape parameter
+scale1 <- 2 # Your updated scale parameter
+control_data <- rgamma(n_obs, shape = shape1, scale = scale1)
+
+med_control_sample <- median(control_data)
+iqr_control_sample <- IQR(control_data)
+q1_control_sample <- quantile(control_data, 0.25, names = FALSE)
+q3_control_sample <- quantile(control_data, 0.75, names = FALSE)
+
+message("--- Group 1 (Control Mice - Gamma) ---")
+message(paste0("Median: ", signif(med_control_sample, 5)))
+message(paste0("IQR:    ", signif(iqr_control_sample, 5)))
+message(paste0("Q1:     ", signif(q1_control_sample, 5)))
+message(paste0("Q3:     ", signif(q3_control_sample, 5)))
+
+# --- Group 2: Treated Mice (Another Gamma Distribution) ---
+shape2 <- 2.25 # Your updated shape parameter
+scale2 <- 2    # Your updated scale parameter
+treated_data <- rgamma(n_obs, shape = shape2, scale = scale2)
+
+med_treated_sample <- median(treated_data)
+iqr_treated_sample <- IQR(treated_data)
+q1_treated_sample <- quantile(treated_data, 0.25, names = FALSE)
+q3_treated_sample <- quantile(treated_data, 0.75, names = FALSE)
+
+message("\n--- Group 2 (Treated Mice - Gamma) ---")
+message(paste0("Median: ", signif(med_treated_sample, 5)))
+message(paste0("IQR:    ", signif(iqr_treated_sample, 5)))
+message(paste0("Q1:     ", signif(q1_treated_sample, 5)))
+message(paste0("Q3:     ", signif(q3_treated_sample, 5)))
+
+# --- Combine into a data frame ---
+mouse_data <- data.frame(
+  measurement = c(control_data, treated_data),
+  status = factor(c(rep("control", n_obs), rep("treated", n_obs)))
+)
+
+# --- Verification of similarity and overlap ---
+message("\n--- Verification of Sample Stats ---")
+median_diff_abs <- abs(med_control_sample - med_treated_sample)
+iqr_diff_abs <- abs(iqr_control_sample - iqr_treated_sample)
+message(paste0("Absolute difference in Sample Medians: ", signif(median_diff_abs, 3)))
+message(paste0("Absolute difference in Sample IQRs:    ", signif(iqr_diff_abs, 3)))
+
+med_control_in_iqr_treated <- (med_control_sample >= q1_treated_sample && med_control_sample <= q3_treated_sample)
+med_treated_in_iqr_control <- (med_treated_sample >= q1_control_sample && med_treated_sample <= q3_control_sample)
+message(paste0("Median of Control within IQR of Treated: ", med_control_in_iqr_treated))
+message(paste0("Median of Treated within IQR of Control: ", med_treated_in_iqr_control))
+
+# --- Perform Statistical Tests ---
+message("\n--- Defining Statistical Tests ---") # Message change for clarity
+mw_test_result <- wilcox.test(measurement ~ status, data = mouse_data)
+ks_test_result <- ks.test(mouse_data$measurement[mouse_data$status=="control"],
+                          mouse_data$measurement[mouse_data$status=="treated"])
+cliff_result <- cliff.delta(measurement ~ status, data = mouse_data, conf.level = .95)
+
+# --- ROC Curve Analysis ---
+message("\n--- ROC Curve Analysis ---")
+roc_obj <- roc(response = mouse_data$status,
+               predictor = mouse_data$measurement,
+               levels = c("control", "treated"),
+               direction = "<", # Assuming higher measurement indicates "treated"
+               plot = FALSE,
+               print.auc = TRUE) # Prints AUC to console
+
+auc_value <- auc(roc_obj) # Explicitly get AUC
+message(paste("Area Under ROC Curve (AUC):", signif(auc_value, 4)))
+
+# Get coordinates for "best" threshold(s) using Youden's J
+all_best_coords <- coords(roc_obj, "best",
+                          ret = c("threshold", "sensitivity", "specificity", "youden"),
+                          best.method = "youden",
+                          transpose = FALSE) # Ensure it's a data frame like structure
+
+# Handle potential ties or no results: pick one "best" point for annotation
+if (nrow(all_best_coords) == 0) {
+  stop("No 'best' coordinates found by Youden's J. Check ROC object or data.")
+} else if (nrow(all_best_coords) > 1) {
+  message(paste("Multiple 'best' thresholds found (", nrow(all_best_coords), "ties). Selecting the first one for plotting."))
+  selected_best_coord_row <- all_best_coords[1, ]
+} else { # nrow is exactly 1
+  selected_best_coord_row <- all_best_coords
+}
+
+optimal_threshold <- selected_best_coord_row$threshold
+optimal_sensitivity <- selected_best_coord_row$sensitivity
+optimal_specificity <- selected_best_coord_row$specificity
+
+message(paste("Optimal Threshold (Youden's J - selected if ties):", signif(optimal_threshold, 4)))
+message(paste("Corresponding Sensitivity:", signif(optimal_sensitivity, 4)))
+message(paste("Corresponding Specificity:", signif(optimal_specificity, 4)))
+
+
+# --- Visualizations ---
+
+# 1. Boxplot (ggplot2)
+message("\n--- Generating ggplot2 Boxplot ---")
+boxplot_gg <- ggplot(mouse_data, aes(x = status, y = measurement, fill = status)) +
+  geom_boxplot(alpha = 0.8, outlier.shape = 21) +
+  labs(title = "Boxplot of Measurements",
+       x = "Status", y = "Measurement") +
+  scale_fill_manual(values = c("control" = "skyblue", "treated" = "salmon")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+# 2. Density Plots (ggplot2)
+message("\n--- Generating ggplot2 Density Plot ---")
+density_plot_gg <- ggplot(mouse_data, aes(x = measurement, fill = status)) +
+  geom_density(alpha = 0.7) +
+  geom_vline(xintercept = optimal_threshold, linetype = "dashed", color = "blue", linewidth = 1) +
+  annotate("text", x = optimal_threshold, y = 0, # Adjust y if densities are very low
+           label = paste("Optimal Split\n", signif(optimal_threshold, 4)),
+           hjust = -0.1, vjust = -0.5, color = "blue", size = 3.5) +
+  labs(title = "Density Plot of Measurements",
+       subtitle = paste("Optimal threshold (Youden's J):", signif(optimal_threshold, 4)),
+       x = "Measurement", y = "Density") +
+  scale_fill_manual(values = c("control" = "skyblue", "treated" = "salmon")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+
+# Arrange Boxplot and Density Plot side-by-side
+message("\n--- Arranging Boxplot and Density Plot Side-by-Side ---")
+arranged_plots <- grid.arrange(boxplot_gg, density_plot_gg, ncol = 2,
+                               top = "Comparison of Measurement Distributions")
+# print(arranged_plots) # grid.arrange usually prints automatically if it's the last evaluated expression of this type
+
+# 3. ROC Plot (ggplot2)
+message("\n--- Generating ggplot2 ROC Plot ---")
+roc_curve_data <- data.frame(
+  FPR = 1 - roc_obj$specificities,
+  TPR = roc_obj$sensitivities
+)
+roc_curve_data <- roc_curve_data[order(roc_curve_data$FPR, roc_curve_data$TPR), ] # Ensure correct plotting order
+
+optimal_point_data <- data.frame(
+  FPR_opt = 1 - optimal_specificity,
+  TPR_opt = optimal_sensitivity
+)
+
+roc_gg_plot <- ggplot(roc_curve_data, aes(x = FPR, y = TPR)) +
+  geom_line(color = "darkorange", linewidth = 1) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "grey") +
+  geom_point(data = optimal_point_data, aes(x = FPR_opt, y = TPR_opt), color = "blue", size = 3, shape = 18) +
+  annotate("text",
+           x = optimal_point_data$FPR_opt + 0.05,
+           y = optimal_point_data$TPR_opt - 0.05,
+           label = paste0("Optimal Thr: ", signif(optimal_threshold, 3),
+                          "\nSens: ", signif(optimal_sensitivity, 2),
+                          "\nSpec: ", signif(optimal_specificity, 2)),
+           color = "blue", size = 3, hjust = 0) +
+  labs(title = "ROC Curve",
+       subtitle = paste("AUC:", signif(auc_value, 4)),
+       x = "1 - Specificity (False Positive Rate)",
+       y = "Sensitivity (True Positive Rate)") +
+  theme_minimal(base_size = 12) +
+  coord_fixed(ratio = 1)
+
+print(roc_gg_plot) # Display the ROC plot
+
+# --- Print Test Results at the End ---
+message("\n--- Final Test Results ---")
+message("Mann-Whitney U Test:")
+print(mw_test_result)
+message("\nKolmogorov-Smirnov Test:")
+print(ks_test_result)
+message("\nCliff's Delta:")
+print(cliff_result)
+```
+
+
+
+# Similar Boxplots and Medians, Significant Mann-Whitney Test
+
+It's possible for two distributions to have very similar medians and interquartile ranges (IQRs), resulting in boxplots that look alike in their central tendencies and spread (the box part), yet the Mann-Whitney U test can still detect a significant difference.
+
+This occurs because the Mann-Whitney U test considers the ranks of all observations across both groups, not just the median and quartiles. If the overall shapes of the distributions differ (e.g., one is symmetric and the other is skewed, or they have different tail weights), the ranks can be distributed differently, leading to a significant result. The test effectively examines if $P(X>Y) = 0.5$, where X and Y are random draws from the two groups. Differences in skewness or the tails of the distributions can make this probability deviate from 0.5 even if medians are identical.
+
+## Why this happens:
+
+Different Skewness: One distribution might be symmetric while the other is skewed. Even if you adjust them to have the same median and a similar IQR, the skewed distribution will have a tail that pulls the ranks in one direction.
+Different Kurtosis (Tail Heaviness): One distribution might have heavier tails than the other. While the central part of the boxplot (median and IQR) might be similar, the way values are distributed in the tails can affect the overall ranking significantly.
+Overall Stochastic Dominance: Even with similar medians, one distribution might be stochastically larger than the other (i.e., values from one group tend to be higher than values from the other group more often than not across the entire range of values).
+
+## When does it actually compares means?
+
+If you make an additional assumption -- that the distributions of the two populations have the same shape, even if they are shifted (have different medians) -- then the Mann-Whiteny test can be considered a test of medians. If you accept the assumption of identically shaped distributions, then a small P value from a Mann-Whitney test leads you to conclude that the difference between medians is statistically significant. But Michael J. Campbell pointed out, "However, if the groups have the same distribution, then a shift in location will move medians and means by the same amount and so the difference in medians is the same as the difference in means. Thus the Mann-Whitney test is also a test for the difference in means."
+
+
+```{r}
+grid.arrange(boxplot_gg, density_plot_gg, ncol = 2,
+                               top = "Comparison of Measurement Distributions")
+```
+
+```{r}
+print(mw_test_result)
+```
+```{r}
+print(ks_test_result)
+```
+```{r}
+print(cliff_result)
+```
+```{r}
+print(roc_gg_plot) # Display the ROC plot
+```
+
+
+# Code
+
+```{eval=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message = TRUE, warning = FALSE)
+set.seed(123)
+# --- Load necessary libraries ---
+# install.packages(c("pROC", "effsize", "ggplot2", "gridExtra")) # Run once if not installed
+library(pROC)
+library(effsize)
+library(ggplot2)
+library(gridExtra) # For arranging ggplot objects
+
+# --- Set a seed for reproducibility ---
+set.seed(123) # Consistent seed
+n_obs <- 500  # Number of observations per group
+
+# --- Group 1: Control Mice (Gamma Distribution) ---
+shape1 <- 2 # Your updated shape parameter
+scale1 <- 2 # Your updated scale parameter
+control_data <- rgamma(n_obs, shape = shape1, scale = scale1)
+
+med_control_sample <- median(control_data)
+iqr_control_sample <- IQR(control_data)
+q1_control_sample <- quantile(control_data, 0.25, names = FALSE)
+q3_control_sample <- quantile(control_data, 0.75, names = FALSE)
+
+message("--- Group 1 (Control Mice - Gamma) ---")
+message(paste0("Median: ", signif(med_control_sample, 5)))
+message(paste0("IQR:    ", signif(iqr_control_sample, 5)))
+message(paste0("Q1:     ", signif(q1_control_sample, 5)))
+message(paste0("Q3:     ", signif(q3_control_sample, 5)))
+
+# --- Group 2: Treated Mice (Another Gamma Distribution) ---
+shape2 <- 2.25 # Your updated shape parameter
+scale2 <- 2    # Your updated scale parameter
+treated_data <- rgamma(n_obs, shape = shape2, scale = scale2)
+
+med_treated_sample <- median(treated_data)
+iqr_treated_sample <- IQR(treated_data)
+q1_treated_sample <- quantile(treated_data, 0.25, names = FALSE)
+q3_treated_sample <- quantile(treated_data, 0.75, names = FALSE)
+
+message("\n--- Group 2 (Treated Mice - Gamma) ---")
+message(paste0("Median: ", signif(med_treated_sample, 5)))
+message(paste0("IQR:    ", signif(iqr_treated_sample, 5)))
+message(paste0("Q1:     ", signif(q1_treated_sample, 5)))
+message(paste0("Q3:     ", signif(q3_treated_sample, 5)))
+
+# --- Combine into a data frame ---
+mouse_data <- data.frame(
+  measurement = c(control_data, treated_data),
+  status = factor(c(rep("control", n_obs), rep("treated", n_obs)))
+)
+
+# --- Verification of similarity and overlap ---
+message("\n--- Verification of Sample Stats ---")
+median_diff_abs <- abs(med_control_sample - med_treated_sample)
+iqr_diff_abs <- abs(iqr_control_sample - iqr_treated_sample)
+message(paste0("Absolute difference in Sample Medians: ", signif(median_diff_abs, 3)))
+message(paste0("Absolute difference in Sample IQRs:    ", signif(iqr_diff_abs, 3)))
+
+med_control_in_iqr_treated <- (med_control_sample >= q1_treated_sample && med_control_sample <= q3_treated_sample)
+med_treated_in_iqr_control <- (med_treated_sample >= q1_control_sample && med_treated_sample <= q3_control_sample)
+message(paste0("Median of Control within IQR of Treated: ", med_control_in_iqr_treated))
+message(paste0("Median of Treated within IQR of Control: ", med_treated_in_iqr_control))
+
+# --- Perform Statistical Tests ---
+message("\n--- Defining Statistical Tests ---") # Message change for clarity
+mw_test_result <- wilcox.test(measurement ~ status, data = mouse_data)
+ks_test_result <- ks.test(mouse_data$measurement[mouse_data$status=="control"],
+                          mouse_data$measurement[mouse_data$status=="treated"])
+cliff_result <- cliff.delta(measurement ~ status, data = mouse_data, conf.level = .95)
+
+# --- ROC Curve Analysis ---
+message("\n--- ROC Curve Analysis ---")
+roc_obj <- roc(response = mouse_data$status,
+               predictor = mouse_data$measurement,
+               levels = c("control", "treated"),
+               direction = "<", # Assuming higher measurement indicates "treated"
+               plot = FALSE,
+               print.auc = TRUE) # Prints AUC to console
+
+auc_value <- auc(roc_obj) # Explicitly get AUC
+message(paste("Area Under ROC Curve (AUC):", signif(auc_value, 4)))
+
+# Get coordinates for "best" threshold(s) using Youden's J
+all_best_coords <- coords(roc_obj, "best",
+                          ret = c("threshold", "sensitivity", "specificity", "youden"),
+                          best.method = "youden",
+                          transpose = FALSE) # Ensure it's a data frame like structure
+
+# Handle potential ties or no results: pick one "best" point for annotation
+if (nrow(all_best_coords) == 0) {
+  stop("No 'best' coordinates found by Youden's J. Check ROC object or data.")
+} else if (nrow(all_best_coords) > 1) {
+  message(paste("Multiple 'best' thresholds found (", nrow(all_best_coords), "ties). Selecting the first one for plotting."))
+  selected_best_coord_row <- all_best_coords[1, ]
+} else { # nrow is exactly 1
+  selected_best_coord_row <- all_best_coords
+}
+
+optimal_threshold <- selected_best_coord_row$threshold
+optimal_sensitivity <- selected_best_coord_row$sensitivity
+optimal_specificity <- selected_best_coord_row$specificity
+
+message(paste("Optimal Threshold (Youden's J - selected if ties):", signif(optimal_threshold, 4)))
+message(paste("Corresponding Sensitivity:", signif(optimal_sensitivity, 4)))
+message(paste("Corresponding Specificity:", signif(optimal_specificity, 4)))
+
+
+# --- Visualizations ---
+
+# 1. Boxplot (ggplot2)
+message("\n--- Generating ggplot2 Boxplot ---")
+boxplot_gg <- ggplot(mouse_data, aes(x = status, y = measurement, fill = status)) +
+  geom_boxplot(alpha = 0.8, outlier.shape = 21) +
+  labs(title = "Boxplot of Measurements",
+       x = "Status", y = "Measurement") +
+  scale_fill_manual(values = c("control" = "skyblue", "treated" = "salmon")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "none")
+
+# 2. Density Plots (ggplot2)
+message("\n--- Generating ggplot2 Density Plot ---")
+density_plot_gg <- ggplot(mouse_data, aes(x = measurement, fill = status)) +
+  geom_density(alpha = 0.7) +
+  geom_vline(xintercept = optimal_threshold, linetype = "dashed", color = "blue", linewidth = 1) +
+  annotate("text", x = optimal_threshold, y = 0, # Adjust y if densities are very low
+           label = paste("Optimal Split\n", signif(optimal_threshold, 4)),
+           hjust = -0.1, vjust = -0.5, color = "blue", size = 3.5) +
+  labs(title = "Density Plot of Measurements",
+       subtitle = paste("Optimal threshold (Youden's J):", signif(optimal_threshold, 4)),
+       x = "Measurement", y = "Density") +
+  scale_fill_manual(values = c("control" = "skyblue", "treated" = "salmon")) +
+  theme_minimal(base_size = 12) +
+  theme(legend.position = "top")
+
+# Arrange Boxplot and Density Plot side-by-side
+message("\n--- Arranging Boxplot and Density Plot Side-by-Side ---")
+arranged_plots <- grid.arrange(boxplot_gg, density_plot_gg, ncol = 2,
+                               top = "Comparison of Measurement Distributions")
+# print(arranged_plots) # grid.arrange usually prints automatically if it's the last evaluated expression of this type
+
+# 3. ROC Plot (ggplot2)
+message("\n--- Generating ggplot2 ROC Plot ---")
+roc_curve_data <- data.frame(
+  FPR = 1 - roc_obj$specificities,
+  TPR = roc_obj$sensitivities
+)
+roc_curve_data <- roc_curve_data[order(roc_curve_data$FPR, roc_curve_data$TPR), ] # Ensure correct plotting order
+
+optimal_point_data <- data.frame(
+  FPR_opt = 1 - optimal_specificity,
+  TPR_opt = optimal_sensitivity
+)
+
+roc_gg_plot <- ggplot(roc_curve_data, aes(x = FPR, y = TPR)) +
+  geom_line(color = "darkorange", linewidth = 1) +
+  geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "grey") +
+  geom_point(data = optimal_point_data, aes(x = FPR_opt, y = TPR_opt), color = "blue", size = 3, shape = 18) +
+  annotate("text",
+           x = optimal_point_data$FPR_opt + 0.05,
+           y = optimal_point_data$TPR_opt - 0.05,
+           label = paste0("Optimal Thr: ", signif(optimal_threshold, 3),
+                          "\nSens: ", signif(optimal_sensitivity, 2),
+                          "\nSpec: ", signif(optimal_specificity, 2)),
+           color = "blue", size = 3, hjust = 0) +
+  labs(title = "ROC Curve",
+       subtitle = paste("AUC:", signif(auc_value, 4)),
+       x = "1 - Specificity (False Positive Rate)",
+       y = "Sensitivity (True Positive Rate)") +
+  theme_minimal(base_size = 12) +
+  coord_fixed(ratio = 1)
+
+print(roc_gg_plot) # Display the ROC plot
+
+# --- Print Test Results at the End ---
+message("\n--- Final Test Results ---")
+message("Mann-Whitney U Test:")
+print(mw_test_result)
+message("\nKolmogorov-Smirnov Test:")
+print(ks_test_result)
+message("\nCliff's Delta:")
+print(cliff_result)
+
+```
+
+

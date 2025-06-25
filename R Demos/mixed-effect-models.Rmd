@@ -1,0 +1,1040 @@
+---
+title: "Village Random Effects: A Deep Dive into Hierarchical Models"
+author: "Max Lang"
+date: "2025-06-25"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Step 1: Load required libraries
+library(tidyverse)
+library(ggdist)
+library(lme4)
+
+# Step 2: Create the simulation function
+simulate_strong_village_effects_extended <- function(n_villages = 20) {
+  n_obs_per_village <- 30
+  
+  # Overall parameters
+  grand_mean <- 20      # μ₀
+  village_sd <- 10      # σ_village
+  within_sd <- 2        # σ_within
+  
+  # Village-level random effects drawn from normal distribution
+  # This implements: μᵢ ~ N(μ₀, σ²_village)
+  village_effects <- rnorm(n_villages, mean = 0, sd = village_sd)
+  
+  # Store true village means for visualization
+  village_means <- grand_mean + village_effects
+  
+  data <- data.frame()
+  for (i in 1:n_villages) {
+    # This implements: Yᵢⱼ | μᵢ ~ N(μᵢ, σ²_within)
+    village_data <- data.frame(
+      village = factor(paste0("V", i), levels = paste0("V", 1:n_villages)),
+      abundance = rnorm(n_obs_per_village, 
+                       mean = village_means[i],
+                       sd = within_sd),
+      true_village_mean = village_means[i]
+    )
+    data <- rbind(data, village_data)
+  }
+  
+  # Add attributes for plotting
+  attr(data, "grand_mean") <- grand_mean
+  attr(data, "village_sd") <- village_sd
+  attr(data, "village_effects") <- village_effects
+  
+  return(data)
+}
+
+# Step 3: Generate data
+set.seed(42)
+data_strong_extended <- simulate_strong_village_effects_extended(n_villages = 20)
+
+# Step 4: Extract parameters
+grand_mean <- attr(data_strong_extended, "grand_mean")
+village_sd <- attr(data_strong_extended, "village_sd")
+
+# Calculate the ICC for our simulated data
+ICC_true <- village_sd^2 / (village_sd^2 + 2^2)
+cat(sprintf("True ICC = %.3f\n", ICC_true))
+cat("This means %.1f%% of the total variance is between villages\n", ICC_true * 100)
+
+# Step 5: Calculate village-specific statistics
+village_stats <- data_strong_extended %>%
+  group_by(village) %>%
+  summarise(
+    observed_mean = mean(abundance),
+    true_mean = first(true_village_mean),
+    median = median(abundance),
+    q1 = quantile(abundance, 0.25),
+    q3 = quantile(abundance, 0.75),
+    .groups = "drop"
+  ) %>%
+  mutate(village_num = as.numeric(gsub("V", "", village)))
+
+# Step 6: Check that village_stats has the correct columns
+print(names(village_stats))
+print(head(village_stats))
+```
+ 
+
+# Introduction: What are Hierarchical Models?
+
+Hierarchical models, also known as multilevel models or mixed-effects models, are statistical models that account for data with a nested or grouped structure. In our example, mosquito abundance measurements are nested within villages.
+
+## Alternative Modeling Approaches
+
+Before diving into hierarchical models, let's consider two extreme approaches to handling grouped data:
+
+### 1. Complete Pooling: Ignoring the Grouping Structure
+
+In this approach, we completely ignore that observations come from different villages and fit a single model:
+
+$$y_{ij} = \beta_0 + \varepsilon_{ij}$$
+
+Where:
+- $y_{ij}$ is the $j$-th observation in village $i$
+- $\beta_0$ represents a constant overall intercept
+- $\varepsilon_{ij} \sim N(0, \sigma^2)$ is the error term
+
+The least squares estimator is simply:
+$$\hat{\beta}_0 = \bar{y} = \frac{1}{N}\sum_{i=1}^{n_{villages}}\sum_{j=1}^{n_i} y_{ij}$$
+
+**Problems with complete pooling:**
+- Treats all observations as coming from a single homogeneous population
+- Ignores village-level variation
+- Underestimates uncertainty for village-specific predictions
+- Can lead to incorrect inferences about treatment effects
+
+### 2. No Pooling: Complete Differentiation of Groups
+
+At the other extreme, we could fit a separate model for each village:
+
+$$y_{ij} = \eta_i + \varepsilon_{ij}$$
+
+Where:
+- $\eta_i$ represents the village-specific effect (treated as fixed)
+- Each village gets its own parameter
+
+The least squares estimator for each village is:
+$$\hat{\eta}_i = \bar{y}_i = \frac{1}{n_i}\sum_{j=1}^{n_i} y_{ij}$$
+
+**Problems with no pooling:**
+- Doesn't borrow strength across villages
+- Can overfit, especially with small sample sizes per village
+- Treats villages as completely unrelated
+- Cannot make inferences about new villages
+
+### 3. Partial Pooling: The Hierarchical Model Solution
+
+Hierarchical models provide a middle ground through **partial pooling**:
+
+$$y_{ij} = \mu_0 + u_i + \varepsilon_{ij}$$
+
+Where:
+- $u_i \sim N(0, \sigma^2_{village})$ is the random village effect
+- Villages are related through a common distribution
+
+This approach:
+- Borrows strength across villages
+- Shrinks extreme estimates toward the grand mean
+- Provides a natural way to handle unbalanced data
+- Allows inference about the population of villages
+
+
+## The Mathematical Framework of Hierarchical Models
+
+## The Mathematical Framework
+
+A two-level hierarchical model can be written as:
+
+**Level 1 (Observation level):**
+$$Y_{ij} | \mu_i \sim N(\mu_i, \sigma^2_{within})$$
+
+Where:
+- $Y_{ij}$ is the $j$-th observation in village $i$
+- $\mu_i$ is the true mean for village $i$
+- $\sigma^2_{within}$ is the within-village variance
+
+**Level 2 (Village level):**
+$$\mu_i \sim N(\mu_0, \sigma^2_{village})$$
+
+Where:
+- $\mu_0$ is the grand mean (population mean across all villages)
+- $\sigma^2_{village}$ is the between-village variance
+
+## Combined Model
+
+We can also write this as a single equation:
+$$Y_{ij} = \mu_0 + u_i + \epsilon_{ij}$$
+
+Where:
+- $u_i \sim N(0, \sigma^2_{village})$ is the random village effect
+- $\epsilon_{ij} \sim N(0, \sigma^2_{within})$ is the within-village error
+- $u_i$ and $\epsilon_{ij}$ are independent
+
+## Variance Decomposition
+
+The total variance in the data is:
+$$Var(Y_{ij}) = \sigma^2_{village} + \sigma^2_{within}$$
+
+The **Intraclass Correlation Coefficient (ICC)** measures the proportion of variance due to villages:
+$$ICC = \frac{\sigma^2_{village}}{\sigma^2_{village} + \sigma^2_{within}}$$
+
+
+
+# Visualizing the Hierarchical Structure
+
+## Basic Visualization
+
+```{r}
+# Step 7: Create the basic plot first
+p_basic <- ggplot(data_strong_extended, aes(x = village, y = abundance)) +
+  # Village boxplots
+  geom_boxplot(aes(fill = village), alpha = 0.7, width = 0.6) +
+  # Individual observations
+  geom_jitter(width = 0.15, alpha = 0.3, size = 0.8) +
+  # True village means
+  geom_point(data = village_stats, 
+             aes(y = true_mean), 
+             color = "red", 
+             size = 3, 
+             shape = 18) +
+  # Grand mean line
+  geom_hline(yintercept = grand_mean, 
+             linetype = "dashed", 
+             color = "darkred", 
+             linewidth = 1) +
+  scale_x_discrete(labels = function(x) gsub("V", "", x)) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 8)) +
+  labs(title = "Strong Village Effects: Villages as Random Draws from Normal Distribution",
+       subtitle = sprintf("Grand mean = %.0f (dashed line) | Village SD = %.0f | Within-village SD = %.0f", 
+                         grand_mean, village_sd, 2),
+       x = "Village",
+       y = "Mosquito Abundance",
+       caption = "Red diamonds = true village means")
+
+print(p_basic)
+```
+
+### What This Plot Shows:
+
+1. **Between-village variation**: Notice how the red diamonds (true village means) vary substantially around the grand mean (dashed line). This variation follows $N(\mu_0, \sigma^2_{village}) = N(20, 10^2)$.
+
+2. **Within-village variation**: Each boxplot shows the distribution within a village. The spread within each box is much smaller than the spread between village means, reflecting $\sigma_{within} = 2 << \sigma_{village} = 10$.
+
+3. **Hierarchical structure**: Each observation belongs to two distributions:
+   - First, its village mean is drawn from $N(20, 10^2)$
+   - Then, the observation is drawn from $N(\mu_i, 2^2)$
+
+## Enhanced Hierarchical Visualization
+
+```{r}
+# Step 8: Create enhanced plot showing the hierarchical structure
+p_hierarchical <- ggplot(data_strong_extended, aes(x = village, y = abundance)) +
+  
+  # Add a visual representation of the population distribution of village means
+  # This shows the N(20, 10) distribution that village means are drawn from
+  annotate("rect", 
+           xmin = -Inf, xmax = Inf, 
+           ymin = grand_mean - 2*village_sd, 
+           ymax = grand_mean + 2*village_sd,
+           alpha = 0.1, fill = "blue") +
+  
+  annotate("rect", 
+           xmin = -Inf, xmax = Inf, 
+           ymin = grand_mean - village_sd, 
+           ymax = grand_mean + village_sd,
+           alpha = 0.1, fill = "blue") +
+  
+  # Village boxplots
+  geom_boxplot(aes(fill = village), alpha = 0.7, width = 0.6) +
+  
+  # Individual observations
+  geom_jitter(width = 0.15, alpha = 0.3, size = 0.8) +
+  
+  # True village means (these are draws from N(20, 10))
+  geom_point(data = village_stats, 
+             aes(y = true_mean), 
+             color = "blue", 
+             size = 3, 
+             shape = 17) +  # Triangle for village means
+  
+  # Grand mean line (μ₀ = 20)
+  geom_hline(yintercept = grand_mean, 
+             linetype = "solid", 
+             color = "blue", 
+             linewidth = 1.2) +
+  
+  # Add lines showing ±1 SD and ±2 SD from grand mean
+  geom_hline(yintercept = grand_mean + village_sd, 
+             linetype = "dotted", 
+             color = "blue", 
+             alpha = 0.5) +
+  geom_hline(yintercept = grand_mean - village_sd, 
+             linetype = "dotted", 
+             color = "blue", 
+             alpha = 0.5) +
+  geom_hline(yintercept = grand_mean + 2*village_sd, 
+             linetype = "dotted", 
+             color = "blue", 
+             alpha = 0.3) +
+  geom_hline(yintercept = grand_mean - 2*village_sd, 
+             linetype = "dotted", 
+             color = "blue", 
+             alpha = 0.3) +
+  
+  # Add text annotations
+  annotate("text", x = 0.5, y = grand_mean + 2.2*village_sd, 
+           label = "Village means ~ N(20, 10²)", 
+           hjust = 0, color = "blue", fontface = "bold", size = 4) +
+  
+  annotate("text", x = 20.5, y = grand_mean, 
+           label = "μ₀", 
+           hjust = 0, color = "blue", fontface = "bold") +
+  
+  annotate("text", x = 20.5, y = grand_mean + village_sd, 
+           label = "+1σ", 
+           hjust = 0, color = "blue", size = 3) +
+  
+  annotate("text", x = 20.5, y = grand_mean - village_sd, 
+           label = "-1σ", 
+           hjust = 0, color = "blue", size = 3) +
+  
+  scale_x_discrete(labels = function(x) gsub("V", "", x)) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 8)) +
+  labs(title = "Hierarchical Model: Villages from Global Distribution",
+       subtitle = "Blue shading shows where 68% (dark) and 95% (light) of village means should fall",
+       x = "Village",
+       y = "Mosquito Abundance",
+       caption = "Blue triangles = village means from N(20,10²) | Boxes = observations from N(village_mean, 2²)")
+
+print(p_hierarchical)
+```
+
+### Mathematical Interpretation:
+
+The blue shaded regions represent probability zones for village means:
+- **Dark blue (±1σ)**: Contains ~68% of village means, i.e., $P(\mu_0 - \sigma_{village} < \mu_i < \mu_0 + \sigma_{village}) \approx 0.68$
+- **Light blue (±2σ)**: Contains ~95% of village means, i.e., $P(\mu_0 - 2\sigma_{village} < \mu_i < \mu_0 + 2\sigma_{village}) \approx 0.95$
+
+## Side-by-Side Visualization: Population and Sample
+
+```{r}
+# Step 9: Create a side-by-side visualization showing the concept more clearly
+library(patchwork)
+
+# Create density plot showing the population distribution
+p_population <- ggplot() +
+  stat_function(fun = dnorm, 
+                args = list(mean = grand_mean, sd = village_sd),
+                xlim = c(grand_mean - 3*village_sd, grand_mean + 3*village_sd),
+                geom = "area", fill = "blue", alpha = 0.3) +
+  stat_function(fun = dnorm, 
+                args = list(mean = grand_mean, sd = village_sd),
+                xlim = c(grand_mean - 3*village_sd, grand_mean + 3*village_sd),
+                color = "blue", linewidth = 1) +
+  # Add the actual village means as points
+  geom_point(data = village_stats,
+             aes(x = true_mean, y = 0),
+             color = "blue", size = 3, shape = 17) +
+  geom_vline(xintercept = grand_mean, color = "blue", linetype = "dashed") +
+  scale_y_continuous(expand = c(0, 0)) +
+  coord_flip(xlim = c(-10, 50)) +
+  theme_minimal() +
+  labs(title = "Population Distribution",
+       subtitle = "Village means ~ N(20, 10²)",
+       y = "", x = "Village Mean") +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank())
+
+# Combine with the main plot
+p_combined <- p_population | p_hierarchical
+p_combined <- p_combined + plot_layout(widths = c(1, 4))
+
+print(p_combined)
+
+# Step 10: Verify the hierarchical structure with numbers
+cat("\nVERIFYING THE HIERARCHICAL STRUCTURE\n")
+cat("=====================================\n")
+cat(sprintf("Grand mean (μ₀): %.1f\n", grand_mean))
+cat(sprintf("Village SD (σ_village): %.1f\n", village_sd))
+cat(sprintf("Within-village SD (σ_within): %.1f\n\n", 2))
+
+# Check if village means follow N(20, 10)
+cat("Village means should be approximately N(20, 10):\n")
+cat(sprintf("  Observed mean of village means: %.1f\n", mean(village_stats$true_mean)))
+cat(sprintf("  Observed SD of village means: %.1f\n", sd(village_stats$true_mean)))
+cat(sprintf("  Expected range (μ ± 2σ): [%.1f, %.1f]\n", 
+            grand_mean - 2*village_sd, grand_mean + 2*village_sd))
+cat(sprintf("  Actual range: [%.1f, %.1f]\n", 
+            min(village_stats$true_mean), max(village_stats$true_mean)))
+```
+
+## Visualization with Theoretical Distributions
+
+```{r}
+# Step 8: Create enhanced plot with halfeye distributions for each village
+library(ggdist)
+library(distributional)
+
+# First, let's create a proper dataset for the halfeye distributions
+# We need to specify the distribution parameters for each village
+village_dist_data <- village_stats %>%
+  mutate(
+    # Create a dummy y variable for positioning
+    y = true_mean,
+    # Specify the distribution for each village
+    dist = dist_normal(true_mean, 2)  # mean = village mean, sd = 2
+  )
+
+p_hierarchical_with_halfeye <- ggplot(data_strong_extended, aes(x = village, y = abundance)) +
+  
+  # Add a visual representation of the population distribution of village means
+  # This shows the N(20, 10) distribution that village means are drawn from
+  annotate("rect", 
+           xmin = -Inf, xmax = Inf, 
+           ymin = grand_mean - 2*village_sd, 
+           ymax = grand_mean + 2*village_sd,
+           alpha = 0.1, fill = "blue") +
+  
+  annotate("rect", 
+           xmin = -Inf, xmax = Inf, 
+           ymin = grand_mean - village_sd, 
+           ymax = grand_mean + village_sd,
+           alpha = 0.1, fill = "blue") +
+  
+  # Add halfeye for each village's theoretical distribution
+  # Use a separate data source for this layer
+  stat_dist_halfeye(
+    data = village_dist_data,
+    aes(x = village, 
+        y = y,  # Use the dummy y variable
+        dist = dist),
+    alpha = 0.4,
+    fill = "darkgreen",
+    slab_color = "darkgreen",
+    slab_linewidth = 0.5,
+    scale = 0.5,  # Adjust width of distributions
+    inherit.aes = FALSE  # Don't inherit aesthetics from main plot
+  ) +
+  
+  # Village boxplots
+  geom_boxplot(aes(fill = village), 
+               alpha = 0.7, 
+               width = 0.3,  # Make narrower so halfeye is visible
+               outlier.size = 1) +
+  
+  # Individual observations
+  geom_jitter(width = 0.1, alpha = 0.3, size = 0.8) +
+  
+  # True village means (these are draws from N(20, 10))
+  geom_point(data = village_stats, 
+             aes(y = true_mean, x= village), 
+             color = "blue", 
+             size = 3, 
+             shape = 17,
+             inherit.aes = FALSE) +  # Triangle for village means
+  
+  # Grand mean line (μ₀ = 20)
+  geom_hline(yintercept = grand_mean, 
+             linetype = "solid", 
+             color = "blue", 
+             linewidth = 1.2) +
+  
+  # Add lines showing ±1 SD and ±2 SD from grand mean
+  geom_hline(yintercept = grand_mean + village_sd, 
+             linetype = "dotted", 
+             color = "blue", 
+             alpha = 0.5) +
+  geom_hline(yintercept = grand_mean - village_sd, 
+             linetype = "dotted", 
+             color = "blue", 
+             alpha = 0.5) +
+  geom_hline(yintercept = grand_mean + 2*village_sd, 
+             linetype = "dotted", 
+             color = "blue", 
+             alpha = 0.3) +
+  geom_hline(yintercept = grand_mean - 2*village_sd, 
+             linetype = "dotted", 
+             color = "blue", 
+             alpha = 0.3) +
+  
+  # Add text annotations
+  annotate("text", x = 0.5, y = grand_mean + 2.2*village_sd, 
+           label = "Level 2: Village means ~ N(20, 10²)", 
+           hjust = 0, color = "blue", fontface = "bold", size = 4) +
+  
+  annotate("text", x = 0.5, y = grand_mean - 2.4*village_sd, 
+           label = "Level 1: Within each village ~ N(μᵢ, 2²)", 
+           hjust = 0, color = "darkgreen", fontface = "bold", size = 4) +
+  
+  annotate("text", x = 20.5, y = grand_mean, 
+           label = "μ₀", 
+           hjust = 0, color = "blue", fontface = "bold") +
+  
+  annotate("text", x = 20.5, y = grand_mean + village_sd, 
+           label = "+1σ", 
+           hjust = 0, color = "blue", size = 3) +
+  
+  annotate("text", x = 20.5, y = grand_mean - village_sd, 
+           label = "-1σ", 
+           hjust = 0, color = "blue", size = 3) +
+  
+  scale_x_discrete(labels = function(x) gsub("V", "", x)) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(size = 8)) +
+  labs(title = "Hierarchical Model: Two Levels of Normal Distributions",
+       subtitle = "Blue: Population of villages N(20,10²) | Green: Within-village distributions N(μᵢ,2²)",
+       x = "Village",
+       y = "Mosquito Abundance",
+       caption = "Green curves = theoretical distribution for each village | Blue triangles = village means | Boxes = observed data")
+
+print(p_hierarchical_with_halfeye)
+```
+
+### Understanding the Two-Level Structure:
+
+The green distributions show the **conditional distribution** of observations given the village:
+$$Y_{ij} | \mu_i \sim N(\mu_i, 2^2)$$
+
+Each green curve is centered at its village's true mean (blue triangle), which itself was drawn from:
+$$\mu_i \sim N(20, 10^2)$$
+
+## Combined Visualization
+
+```{r}
+# Combine with the main plot
+p_combined <- p_population | p_hierarchical_with_halfeye
+p_combined <- p_combined + plot_layout(widths = c(1, 4))
+
+print(p_combined)
+```
+
+# Formal Mathematical Assumptions
+
+```{r}
+cat("\nFORMAL ASSUMPTIONS FOR RANDOM EFFECTS MODEL\n")
+cat("===========================================\n\n")
+
+cat("1. LEVEL 2 ASSUMPTION (Village Level):\n")
+cat("   - Village means (μᵢ) are normally distributed\n")
+cat("   - μᵢ ~ N(μ₀, σ²ᵥᵢₗₗₐ𝓰ₑ)\n")
+cat("   - This means village effects are exchangeable\n")
+cat("   - Check: Q-Q plot of village means, Shapiro-Wilk test\n\n")
+
+cat("2. LEVEL 1 ASSUMPTION (Observation Level):\n")
+cat("   - Within each village, observations are normally distributed\n")
+cat("   - Yᵢⱼ|μᵢ ~ N(μᵢ, σ²ᵥᵥᵢₜₕᵢₙ)\n")
+cat("   - Variance is constant across villages (homoscedasticity)\n")
+cat("   - Check: Histograms by village, residual plots\n\n")
+
+cat("3. INDEPENDENCE ASSUMPTIONS:\n")
+cat("   - Villages are independent of each other\n")
+cat("   - Observations within villages are conditionally independent\n")
+cat("   - No spatial or temporal correlation between villages\n\n")
+```
+
+# Model Fitting and Assumption Verification
+
+## Fitting the Random Effects Model
+
+When we fit a random effects model using `lmer`, we're estimating:
+
+$$Y_{ij} = \beta_0 + u_i + \epsilon_{ij}$$
+
+Where:
+- $\beta_0$ estimates $\mu_0$ (fixed effect)
+- $u_i \sim N(0, \sigma^2_{village})$ (random effect)
+- $\epsilon_{ij} \sim N(0, \sigma^2_{within})$ (residual)
+
+The model estimates:
+- $\hat{\beta}_0$ (estimated grand mean)
+- $\hat{\sigma}^2_{village}$ (estimated between-village variance)
+- $\hat{\sigma}^2_{within}$ (estimated within-village variance)
+
+# Village Level Assumptions
+
+```{r}
+# SECTION: VERIFYING RANDOM EFFECTS ASSUMPTIONS
+# =============================================
+
+cat("\n=== STEP-BY-STEP GUIDE TO VERIFYING RANDOM EFFECTS ASSUMPTIONS ===\n\n")
+
+# First, fit the random effects model
+model <- lmer(abundance ~ 1 + (1|village), data = data_strong_extended)
+
+# Display model summary
+summary(model)
+
+# Extract variance components
+var_components <- as.data.frame(VarCorr(model))
+sigma_village_est <- sqrt(var_components[1, "vcov"])
+sigma_within_est <- sqrt(var_components[2, "vcov"])
+
+cat("\nESTIMATED VARIANCE COMPONENTS:\n")
+cat(sprintf("σ̂_village = %.2f (true = %.0f)\n", sigma_village_est, village_sd))
+cat(sprintf("σ̂_within = %.2f (true = %.0f)\n", sigma_within_est, 2))
+cat(sprintf("Estimated ICC = %.3f (true = %.3f)\n", 
+            sigma_village_est^2 / (sigma_village_est^2 + sigma_within_est^2), ICC_true))
+
+# Extract the random effects (BLUPs)
+ranef_village <- ranef(model)$village
+names(ranef_village) <- "village_effect"
+ranef_village$village <- rownames(ranef_village)
+
+# Also get the fitted village means
+village_means_fitted <- coef(model)$village
+names(village_means_fitted) <- "fitted_mean"
+village_means_fitted$village <- rownames(village_means_fitted)
+
+# Combine with observed means
+verification_data <- village_stats %>%
+  left_join(ranef_village, by = "village") %>%
+  left_join(village_means_fitted, by = "village")
+
+# ============================================
+# STEP 1: VERIFY LEVEL 2 ASSUMPTION
+# Village means are normally distributed
+# ============================================
+
+cat("\nSTEP 1: VERIFYING LEVEL 2 ASSUMPTION - Village Means ~ Normal\n")
+cat("===========================================================\n\n")
+
+# Mathematical explanation
+cat("We're checking if: μᵢ ~ N(μ₀, σ²_village)\n")
+cat("Equivalently: (μᵢ - μ₀)/σ_village ~ N(0, 1)\n\n")
+
+# 1A. Visual Check: Histogram with normal overlay
+p1a_histogram <- ggplot(verification_data, aes(x = fitted_mean)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 bins = 8, 
+                 fill = "lightblue", 
+                 color = "black", 
+                 alpha = 0.7) +
+  stat_function(fun = dnorm, 
+                args = list(mean = mean(verification_data$fitted_mean), 
+                           sd = sd(verification_data$fitted_mean)),
+                color = "blue", 
+                linewidth = 1.5) +
+  theme_minimal() +
+  labs(title = "1A. Histogram of Village Means",
+       subtitle = "Should approximately follow the blue normal curve",
+       x = "Fitted Village Mean",
+       y = "Density") +
+  theme(plot.title = element_text(face = "bold"))
+
+# 1B. Q-Q Plot - Most important visual check
+p1b_qq <- ggplot(verification_data, aes(sample = fitted_mean)) +
+  stat_qq(size = 3, color = "darkblue") +
+  stat_qq_line(color = "blue", linewidth = 1) +
+  theme_minimal() +
+  labs(title = "1B. Q-Q Plot of Village Means",
+       subtitle = "Points should follow the blue line if normally distributed",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") +
+  theme(plot.title = element_text(face = "bold"))
+
+# 1C. Alternative: Q-Q plot of random effects
+p1c_qq_effects <- ggplot(verification_data, aes(sample = village_effect)) +
+  stat_qq(size = 3, color = "darkgreen") +
+  stat_qq_line(color = "green", linewidth = 1) +
+  theme_minimal() +
+  labs(title = "1C. Q-Q Plot of Village Random Effects",
+       subtitle = "Random effects (deviations from grand mean) should also be normal",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") +
+  theme(plot.title = element_text(face = "bold"))
+
+# Combine visual diagnostics
+library(patchwork)
+p_level2_visual <- (p1a_histogram | p1b_qq) / (p1c_qq_effects)
+print(p_level2_visual)
+
+# Formal statistical test
+shapiro_test <- shapiro.test(verification_data$fitted_mean)
+cat("\nShapiro-Wilk test for normality of village means:\n")
+cat(sprintf("W = %.4f, p-value = %.4f\n", shapiro_test$statistic, shapiro_test$p.value))
+cat("If p > 0.05, we fail to reject the null hypothesis of normality\n")
+```
+
+### Interpreting Level 2 Diagnostics:
+
+**Q-Q Plot Interpretation:**
+- Points on the line → Normal distribution confirmed
+- S-shaped curve → Heavy or light tails
+- Systematic deviation → Non-normality
+
+**What if Level 2 assumption fails?**
+- Consider transformation of response variable
+- Use robust methods (e.g., t-distribution for random effects)
+- Check for outlier villages
+
+# Observation (Statistical Unit) Level Assumption
+
+```{r}
+# ============================================
+# STEP 2: VERIFY LEVEL 1 ASSUMPTIONS
+# Within-village normality and homoscedasticity
+# ============================================
+
+cat("\nSTEP 2: VERIFYING LEVEL 1 ASSUMPTIONS - Within-Village Normality & Equal Variance\n")
+cat("================================================================================\n\n")
+
+cat("Mathematical framework:\n")
+cat("Yᵢⱼ | μᵢ ~ N(μᵢ, σ²_within)\n")
+cat("This implies: εᵢⱼ = Yᵢⱼ - μᵢ ~ N(0, σ²_within)\n")
+cat("Key: σ²_within should be the same for all villages (homoscedasticity)\n\n")
+
+# Extract residuals and fitted values from the model
+data_strong_extended$residuals <- residuals(model)
+data_strong_extended$fitted <- fitted(model)
+data_strong_extended$standardized_residuals <- data_strong_extended$residuals / sd(data_strong_extended$residuals)
+
+# 2A. Overall residual distribution
+p2a_overall_residuals <- ggplot(data_strong_extended, aes(x = residuals)) +
+  geom_histogram(aes(y = after_stat(density)), 
+                 bins = 30, 
+                 fill = "lightgreen", 
+                 color = "black", 
+                 alpha = 0.7) +
+  stat_function(fun = dnorm, 
+                args = list(mean = 0, sd = sd(data_strong_extended$residuals)),
+                color = "darkgreen", 
+                linewidth = 1.5) +
+  theme_minimal() +
+  labs(title = "2A. Overall Residual Distribution",
+       subtitle = "All residuals pooled - should follow normal curve",
+       x = "Residuals",
+       y = "Density") +
+  theme(plot.title = element_text(face = "bold", color = "darkgreen"))
+
+# 2B. Q-Q plot of overall residuals
+p2b_qq_residuals <- ggplot(data_strong_extended, aes(sample = residuals)) +
+  stat_qq(alpha = 0.5, color = "darkgreen") +
+  stat_qq_line(color = "darkgreen", linewidth = 1) +
+  theme_minimal() +
+  labs(title = "2B. Q-Q Plot of Residuals",
+       subtitle = "Points should follow the line for normal residuals",
+       x = "Theoretical Quantiles",
+       y = "Sample Quantiles") +
+  theme(plot.title = element_text(face = "bold", color = "darkgreen"))
+
+# 2C. Residuals vs Fitted Values (check homoscedasticity)
+p2c_resid_fitted <- ggplot(data_strong_extended, aes(x = fitted, y = residuals)) +
+  geom_point(alpha = 0.3, color = "darkgreen") +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed", linewidth = 1) +
+  geom_smooth(method = "loess", se = TRUE, color = "blue", linewidth = 1) +
+  theme_minimal() +
+  labs(title = "2C. Residuals vs Fitted Values",
+       subtitle = "Should show no pattern - constant spread around zero",
+       x = "Fitted Values",
+       y = "Residuals") +
+  theme(plot.title = element_text(face = "bold", color = "darkgreen"))
+
+# 2D. Scale-Location plot (check homoscedasticity)
+p2d_scale_location <- ggplot(data_strong_extended, 
+                             aes(x = fitted, y = sqrt(abs(standardized_residuals)))) +
+  geom_point(alpha = 0.3, color = "darkgreen") +
+  geom_smooth(method = "loess", se = TRUE, color = "blue", linewidth = 1) +
+  theme_minimal() +
+  labs(title = "2D. Scale-Location Plot",
+       subtitle = "Horizontal line indicates constant variance",
+       x = "Fitted Values",
+       y = "√|Standardized Residuals|") +
+  theme(plot.title = element_text(face = "bold", color = "darkgreen"))
+
+# Combine first set of plots
+p_level1_overall <- (p2a_overall_residuals | p2b_qq_residuals) / 
+                    (p2c_resid_fitted | p2d_scale_location)
+print(p_level1_overall)
+```
+
+### Homoscedasticity Test
+
+```{r}
+# Test for homoscedasticity using Levene's test
+library(car)
+levene_test <- leveneTest(residuals ~ village, data = data_strong_extended)
+cat("\nLevene's Test for Homogeneity of Variance:\n")
+print(levene_test)
+cat("\nIf p > 0.05, we fail to reject the null hypothesis of equal variances\n")
+
+# 2F. Residuals by village (boxplots)
+p2f_residuals_by_village <- ggplot(data_strong_extended, 
+                                   aes(x = village, y = residuals, fill = village)) +
+  geom_boxplot(alpha = 0.6) +
+  geom_hline(yintercept = 0, color = "red", linetype = "dashed") +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  labs(title = "2F. Residual Distribution by Village",
+       subtitle = "Similar box sizes indicate homoscedasticity (equal variance)",
+       x = "Village",
+       y = "Residuals") +
+  theme(plot.title = element_text(face = "bold", color = "darkgreen"))
+
+# 2G. Variance by village (visual comparison)
+village_variance <- data_strong_extended %>%
+  group_by(village) %>%
+  summarise(
+    variance = var(residuals),
+    sd = sd(residuals),
+    n = n()
+  ) %>%
+  arrange(variance)
+
+p2g_variance_comparison <- ggplot(village_variance, 
+                                  aes(x = reorder(village, variance), y = sd)) +
+  geom_point(size = 3, color = "darkgreen") +
+  geom_segment(aes(xend = village, yend = 0), color = "darkgreen", alpha = 0.5) +
+  geom_hline(yintercept = mean(village_variance$sd), 
+             color = "red", linetype = "dashed", linewidth = 1) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1, size = 8)) +
+  labs(title = "2G. Standard Deviation by Village",
+       subtitle = "Red line = average SD. Similar heights indicate homoscedasticity",
+       x = "Village (ordered by variance)",
+       y = "Standard Deviation of Residuals") +
+  theme(plot.title = element_text(face = "bold", color = "darkgreen"))
+
+# Combine variance plots
+p_level1_variance <- p2f_residuals_by_village / p2g_variance_comparison
+print(p_level1_variance)
+
+# Calculate variance ratio
+var_ratio <- max(village_variance$variance) / min(village_variance$variance)
+cat(sprintf("\nVariance ratio (max/min): %.2f\n", var_ratio))
+cat("Rule of thumb: ratio < 3 suggests reasonable homoscedasticity\n")
+```
+
+# Independence Assumptions
+
+## Mathematical Framework for Independence
+
+Independence in hierarchical models has three components:
+
+1. **Between-village independence**: $Cov(u_i, u_j) = 0$ for $i \neq j$
+2. **Within-village conditional independence**: $Cov(\epsilon_{ij}, \epsilon_{ik} | u_i) = 0$ for $j \neq k$
+3. **Cross-level independence**: $Cov(u_i, \epsilon_{jk}) = 0$ for all $i, j, k$
+
+```{r}
+# ============================================
+# STEP 3: VERIFY INDEPENDENCE ASSUMPTIONS
+# ============================================
+
+cat("\nSTEP 3: VERIFYING INDEPENDENCE ASSUMPTIONS\n")
+cat("==========================================\n\n")
+
+cat("Mathematical requirements:\n")
+cat("1. Cov(uᵢ, uⱼ) = 0 for i ≠ j (villages independent)\n")
+cat("2. Cov(εᵢⱼ, εᵢₖ | uᵢ) = 0 for j ≠ k (observations independent within village)\n")
+cat("3. Cov(uᵢ, εⱼₖ) = 0 (random effects independent of residuals)\n\n")
+
+# First, let's add some spatial/temporal information to our data for demonstration
+# In real data, you would have actual coordinates or time stamps
+set.seed(123)
+village_info <- data.frame(
+  village = unique(data_strong_extended$village),
+  # Simulated spatial coordinates
+  x_coord = runif(length(unique(data_strong_extended$village)), 0, 100),
+  y_coord = runif(length(unique(data_strong_extended$village)), 0, 100),
+  # Simulated collection order/time
+  collection_order = sample(1:length(unique(data_strong_extended$village)))
+)
+
+# Add this info to our data
+data_with_location <- data_strong_extended %>%
+  left_join(village_info, by = "village") %>%
+  arrange(collection_order) %>%
+  mutate(observation_order = 1:n())
+
+# Get village-level summaries with spatial info
+village_summary <- data_with_location %>%
+  group_by(village, x_coord, y_coord, collection_order) %>%
+  summarise(
+    mean_abundance = mean(abundance),
+    mean_residual = mean(residuals),
+    .groups = "drop"
+  )
+
+# 3A. SPATIAL INDEPENDENCE - Check for spatial autocorrelation
+# Calculate distance matrix
+dist_matrix <- as.matrix(dist(village_summary[, c("x_coord", "y_coord")]))
+
+# Create a spatial plot of residuals
+p3a_spatial <- ggplot(village_summary, aes(x = x_coord, y = y_coord)) +
+  geom_point(aes(color = mean_residual, size = abs(mean_residual)), alpha = 0.8) +
+  scale_color_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  scale_size_continuous(range = c(2, 8)) +
+  geom_text(aes(label = gsub("V", "", village)), size = 3, vjust = -1) +
+  theme_minimal() +
+  labs(title = "3A. Spatial Distribution of Village Mean Residuals",
+       subtitle = "Random scatter = spatial independence | Clusters = spatial correlation",
+       x = "X Coordinate",
+       y = "Y Coordinate",
+       color = "Mean\nResidual",
+       size = "Absolute\nResidual") +
+  theme(plot.title = element_text(face = "bold"))
+
+print(p3a_spatial)
+```
+
+## Moran's I Test for Spatial Autocorrelation
+
+Moran's I statistic tests for spatial autocorrelation:
+
+$$I = \frac{n}{\sum_{i}\sum_{j}w_{ij}} \frac{\sum_{i}\sum_{j}w_{ij}(y_i - \bar{y})(y_j - \bar{y})}{\sum_{i}(y_i - \bar{y})^2}$$
+
+Where:
+- $w_{ij}$ is the spatial weight between villages $i$ and $j$
+- $y_i$ is the residual for village $i$
+- $\bar{y}$ is the mean residual
+
+```{r}
+# Calculate Moran's I
+# Create spatial weights matrix (inverse distance)
+W <- 1/dist_matrix
+diag(W) <- 0
+W <- W/rowSums(W)  # Row-standardize
+
+# Calculate Moran's I manually
+n <- nrow(village_summary)
+y <- village_summary$mean_residual
+y_mean <- mean(y)
+y_centered <- y - y_mean
+
+# Numerator
+numerator <- sum(W * outer(y_centered, y_centered))
+# Denominator  
+denominator <- sum(y_centered^2)
+# Moran's I
+morans_i <- (n / sum(W)) * (numerator / denominator)
+
+cat(sprintf("\nMoran's I statistic: %.4f\n", morans_i))
+cat("Expected value under null hypothesis (no spatial correlation): ")
+cat(sprintf("E[I] = -1/(n-1) = %.4f\n", -1/(n-1)))
+cat("Values near 0 indicate no spatial autocorrelation\n")
+cat("Positive values indicate positive spatial autocorrelation\n")
+cat("Negative values indicate negative spatial autocorrelation\n")
+
+# 3E. Moran scatterplot
+spatial_lag <- as.vector(W %*% y)
+moran_data <- data.frame(
+  residual = y_centered,
+  spatial_lag = spatial_lag - y_mean,
+  village = village_summary$village
+)
+
+p3e_moran <- ggplot(moran_data, aes(x = residual, y = spatial_lag)) +
+  geom_hline(yintercept = 0, color = "gray50", linetype = "dashed") +
+  geom_vline(xintercept = 0, color = "gray50", linetype = "dashed") +
+  geom_point(size = 3, alpha = 0.7) +
+  geom_smooth(method = "lm", color = "red", se = TRUE) +
+  geom_text(aes(label = gsub("V", "", village)), size = 2, vjust = -1) +
+  annotate("text", x = min(moran_data$residual), y = max(moran_data$spatial_lag),
+           label = "High-High\n(Clustering)", hjust = 0, vjust = 1, color = "red") +
+  annotate("text", x = max(moran_data$residual), y = min(moran_data$spatial_lag),
+           label = "Low-Low\n(Clustering)", hjust = 1, vjust = 0, color = "red") +
+  theme_minimal() +
+  labs(title = "3E. Moran's I Scatterplot",
+       subtitle = sprintf("Moran's I = %.3f | Slope = spatial autocorrelation", morans_i),
+       x = "Village Residual (centered)",
+       y = "Spatial Lag of Residual") +
+  theme(plot.title = element_text(face = "bold"))
+
+print(p3e_moran)
+```
+
+## Temporal Independence and ACF
+
+The autocorrelation function (ACF) at lag $k$ is:
+
+$$\rho_k = \frac{\sum_{t=1}^{n-k}(y_t - \bar{y})(y_{t+k} - \bar{y})}{\sum_{t=1}^{n}(y_t - \bar{y})^2}$$
+
+Under independence, $\rho_k \approx 0$ for all $k > 0$.
+
+```{r}
+# 3G. ACF plot for overall temporal correlation
+acf_data <- acf(data_with_location$residuals, plot = FALSE)
+acf_df <- data.frame(
+  lag = acf_data$lag[-1],  # Remove lag 0
+  acf = acf_data$acf[-1]
+)
+
+# Calculate confidence bounds
+conf_bound <- qnorm(0.975)/sqrt(length(data_with_location$residuals))
+
+p3g_acf <- ggplot(acf_df, aes(x = lag, y = acf)) +
+  geom_segment(aes(xend = lag, yend = 0), color = "darkblue", linewidth = 1) +
+  geom_point(color = "darkblue", size = 2) +
+  geom_ribbon(aes(ymin = -conf_bound, ymax = conf_bound), 
+              alpha = 0.2, fill = "blue") +
+  geom_hline(yintercept = 0, color = "black") +
+  theme_minimal() +
+  labs(title = "3G. Autocorrelation Function (ACF)",
+       subtitle = sprintf("95%% confidence bounds: ±%.3f", conf_bound),
+       x = "Lag",
+       y = "Autocorrelation") +
+  theme(plot.title = element_text(face = "bold"))
+
+print(p3g_acf)
+
+cat("\nINDEPENDENCE DIAGNOSTICS SUMMARY:\n")
+cat("==================================\n\n")
+cat("If assumptions are met:\n")
+cat("✓ Moran's I ≈ 0 (no spatial autocorrelation)\n")
+cat("✓ ACF values within confidence bounds\n")
+cat("✓ No patterns in residual plots\n\n")
+
+cat("If independence is violated, consider:\n")
+cat("• Spatial models (CAR, SAR)\n")
+cat("• Time series methods (AR, MA terms)\n")
+cat("• Clustered standard errors\n")
+cat("• Additional random effects for clustering\n")
+```
+
+# Summary: The Complete Hierarchical Model
+
+## Final Mathematical Representation
+
+Our complete hierarchical model is:
+
+**Distributional form:**
+- Level 1: $Y_{ij} | \mu_i \sim N(\mu_i, \sigma^2_{within})$
+- Level 2: $\mu_i \sim N(\mu_0, \sigma^2_{village})$
+
+**Mixed effects form:**
+$$Y_{ij} = \mu_0 + u_i + \epsilon_{ij}$$
+
+Where:
+- $u_i \sim N(0, \sigma^2_{village})$ independent across villages
+- $\epsilon_{ij} \sim N(0, \sigma^2_{within})$ independent across observations
+- $u_i \perp \epsilon_{ij}$ (random effects independent of residuals)
+
+## Key Parameters and Interpretations
+
+1. **Fixed effect**: $\mu_0$ = overall population mean
+2. **Random effect variance**: $\sigma^2_{village}$ = between-village variability
+3. **Residual variance**: $\sigma^2_{within}$ = within-village variability
+4. **ICC**: $\rho = \frac{\sigma^2_{village}}{\sigma^2_{village} + \sigma^2_{within}}$ = correlation between observations in same village
+
+## Why Use Hierarchical Models?
+
+1. **Correct standard errors**: Accounts for clustering
+2. **Partial pooling**: Borrows strength across villages
+3. **Variance decomposition**: Quantifies variation at each level
+4. **Generalizability**: Inferences about population of villages
+5. **Flexibility**: Can add predictors at multiple levels
+
+This framework extends naturally to more complex scenarios with additional levels, predictors, and random slopes.

@@ -1,0 +1,160 @@
+---
+title: "non-linear-R-effects"
+author: "Max Lang"
+date: "2025-06-20"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+#----------------------------------------------------------------#
+# Step 1: Load Necessary Libraries
+#----------------------------------------------------------------#
+# mgcv for fitting GAMs (spline models)
+# ggplot2 for advanced data visualization
+library(mgcv)
+library(ggplot2)
+
+# Set a seed for reproducibility of the simulated data
+set.seed(42)
+
+#----------------------------------------------------------------#
+# Step 2: Simulate Data with a Continuous Outcome
+#----------------------------------------------------------------#
+# We will create a dataset where the true relationship between age
+# and a continuous biomarker is non-linear.
+
+# Number of individuals in our study
+n <- 400
+
+# Simulate age, ranging from 10 to 70
+age <- runif(n, 10, 70)
+
+# Define a complex true relationship for the mean of the biomarker.
+# We'll use a similar sine wave function to create a "wiggly" pattern.
+true_mean_biomarker <- 15 + 0.5 * age + 20 * sin(age / 10)
+
+# Simulate the final continuous outcome by adding normally distributed noise
+# The 'sd' (standard deviation) of the noise determines how scattered the points are.
+biomarker <- rnorm(n, mean = true_mean_biomarker, sd = 10)
+
+# Create our final data frame
+sim_data_cont <- data.frame(age, biomarker)
+
+# Optional: Take a quick look at the data
+head(sim_data_cont)
+# plot(sim_data_cont$age, sim_data_cont$biomarker) # Quick check of the raw data
+
+
+#----------------------------------------------------------------#
+# Step 3: Fit the Models
+#----------------------------------------------------------------#
+
+### Model 1: Linear Model (lm) ###
+# This model assumes the biomarker value changes linearly with age.
+fit_linear <- lm(biomarker ~ age, data = sim_data_cont)
+
+### Model 2: Quadratic Model (lm) ###
+# We use poly(age, 2) which is the recommended, stable way to fit a quadratic model.
+fit_quad <- lm(biomarker ~ poly(age, 2), data = sim_data_cont)
+
+### Model 3: Spline Model (GAM) ###
+# This GAM fits a flexible smooth of age. By default, gam() with no family
+# specified assumes a continuous outcome (family = gaussian).
+fit_spline <- gam(biomarker ~ s(age), data = sim_data_cont, method = "REML")
+
+
+#----------------------------------------------------------------#
+# Step 4: Examine Model Summaries
+#----------------------------------------------------------------#
+cat("--- Summary of Linear Model ---\n")
+print(summary(fit_linear))
+# Interpretation: Look at the 'Estimate' for 'age' and the overall 'R-squared'.
+
+cat("\n--- Summary of Quadratic Model ---\n")
+print(summary(fit_quad))
+# Interpretation: Look at the significance of 'poly(age, 2)2' and the change in R-squared.
+
+cat("\n--- Summary of Spline (GAM) Model ---\n")
+print(summary(fit_spline))
+# Interpretation: Look at the 'edf' for 's(age)' to assess non-linearity and the 'R-sq.(adj)'
+# which tells you how much variance is explained by the model.
+
+
+#----------------------------------------------------------------#
+# Step 5: Prepare Data for Plotting
+#----------------------------------------------------------------#
+# Create a sequence of 100 age points for predicting smooth curves.
+plot_data <- data.frame(age = seq(min(sim_data_cont$age), max(sim_data_cont$age), length.out = 100))
+
+# Get predictions and standard errors from each model.
+# For lm and gam with continuous outcomes, predictions are on the response scale directly.
+pred_linear <- predict(fit_linear, newdata = plot_data, se.fit = TRUE)
+pred_quad <- predict(fit_quad, newdata = plot_data, se.fit = TRUE)
+pred_spline <- predict(fit_spline, newdata = plot_data, se.fit = TRUE)
+
+# Add predictions and confidence intervals to our plotting data frame
+# The calculation is simpler as no link function transformation is needed.
+plot_data$linear_fit <- pred_linear$fit
+plot_data$linear_lwr <- pred_linear$fit - 1.96 * pred_linear$se.fit
+plot_data$linear_upr <- pred_linear$fit + 1.96 * pred_linear$se.fit
+
+plot_data$quad_fit <- pred_quad$fit
+plot_data$quad_lwr <- pred_quad$fit - 1.96 * pred_quad$se.fit
+plot_data$quad_upr <- pred_quad$fit + 1.96 * pred_quad$se.fit
+
+plot_data$spline_fit <- pred_spline$fit
+plot_data$spline_lwr <- pred_spline$fit - 1.96 * pred_spline$se.fit
+plot_data$spline_upr <- pred_spline$fit + 1.96 * pred_spline$se.fit
+
+
+#----------------------------------------------------------------#
+# Step 6: Create the Visualization
+#----------------------------------------------------------------#
+# We use ggplot2 to create a multi-layered plot showing the raw data
+# and the fitted curves from all three models.
+
+final_plot <- ggplot(sim_data_cont, aes(x = age, y = biomarker)) +
+  # Layer 1: Raw data points
+  geom_point(alpha = 0.4, shape = 16) +
+  
+  # Layer 2: Linear model fit (in blue)
+  geom_ribbon(data = plot_data, aes(x = age, ymin = linear_lwr, ymax = linear_upr),
+              fill = "blue", alpha = 0.2, inherit.aes = FALSE) +
+  geom_line(data = plot_data, aes(x = age, y = linear_fit, color = "Linear"),
+            linewidth = 1) +
+  
+  # Layer 3: Quadratic model fit (in green)
+  geom_ribbon(data = plot_data, aes(x = age, ymin = quad_lwr, ymax = quad_upr),
+              fill = "darkgreen", alpha = 0.2, inherit.aes = FALSE) +
+  geom_line(data = plot_data, aes(x = age, y = quad_fit, color = "Quadratic"),
+            linewidth = 1) +
+  
+  # Layer 4: Spline model fit (in red)
+  geom_ribbon(data = plot_data, aes(x = age, ymin = spline_lwr, ymax = spline_upr),
+              fill = "red", alpha = 0.2, inherit.aes = FALSE) +
+  geom_line(data = plot_data, aes(x = age, y = spline_fit, color = "Spline (GAM)"),
+            linewidth = 1) +
+  
+  # Layer 5: Aesthetics and labels
+  scale_color_manual(name = "Model Fit",
+                     values = c("Linear" = "blue", "Quadratic" = "darkgreen", "Spline (GAM)" = "red")) +
+  labs(
+    title = "Comparison of Models for a Continuous Biomarker vs. Age",
+    subtitle = "Fitted lines with 95% Confidence Intervals",
+    x = "Age (Years)",
+    y = "Biomarker Level"
+  ) +
+  theme_bw() + # Using a different theme for variety
+  theme(legend.position = "bottom")
+
+# Print the final plot
+print(final_plot)
+```
+
+
