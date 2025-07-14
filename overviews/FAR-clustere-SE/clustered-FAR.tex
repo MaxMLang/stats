@@ -5,11 +5,11 @@
 \usepackage{hyperref}
 \usepackage{xcolor}
 \usepackage{algorithm}
+\usepackage{graphicx}
 \usepackage{algorithmic}
 \geometry{margin=1in}
+\title{So FAR, So Good: Making Your Risk Estimates Float Without Drowning}
 
-\title{A Comprehensive Guide to Floating Absolute Risk (FAR) Method: \\
-Theory, Implementation, and Applications}
 \author{}
 \date{\today}
 
@@ -167,18 +167,52 @@ The error limits $[\ell_{\min}, \ell_{\max}]$ represent:
 
 \begin{table}[h]
 \centering
-\begin{tabular}{@{}lcc@{}}
-\toprule
-Relative Error & Coverage of 95\% CI & Assessment \\
-\midrule
-$\pm 5\%$ & 93.7\% -- 96.0\% & Excellent \\
-$\pm 10\%$ & 92.2\% -- 96.9\% & Acceptable \\
-$\pm 20\%$ & 88.3\% -- 98.1\% & Poor \\
-\bottomrule
+\caption{Coverage probabilities of nominal 95 per cent confidence intervals.}
+\begin{tabular}{cc}
+\hline
+Relative error in length (\%) & Coverage probability (\%) \\
+\hline
+$-20$ & 88.3 \\
+$-10$ & 92.2 \\
+$-5$ & 93.7 \\
+0 & 95.0 \\
+$+5$ & 96.0 \\
+$+10$ & 96.9 \\
+$+20$ & 98.1 \\
+\hline
 \end{tabular}
-\caption{Impact of relative SE errors on confidence interval coverage}
 \end{table}
 
+As shown in the table above (adapted from Plummer, 2004), the coverage probability of nominal 95\% confidence intervals depends on the accuracy of the standard error estimates. When FAR underestimates the standard error by 20\% (relative error = -20\%), the actual coverage drops to 88.3\%. Conversely, when FAR overestimates by 20\%, the coverage increases to 98.1\%. For practical applications, relative errors within $\pm 5\%$ yield excellent performance with coverage probabilities close to the nominal 95\% level.
+
+\subsection{Calculating Error Limits}
+
+The error limits $[\ell_{\min}, \ell_{\max}]$ are obtained by considering \textit{all possible} contrasts:
+
+\begin{enumerate}
+    \item For each possible contrast vector $\mathbf{c}$ (where $\sum c_i = 0$), calculate:
+    \begin{equation}
+        \text{Relative SE}(\mathbf{c}) = \frac{\sqrt{\mathbf{c}^T\boldsymbol{\Omega}\mathbf{c}}}{\sqrt{\mathbf{c}^T\hat{\boldsymbol{\Omega}}\mathbf{c}}}
+    \end{equation}
+    
+    \item Find the minimum across all contrasts:
+    \begin{equation}
+        \ell_{\min} = \min_{\mathbf{c}: \sum c_i = 0} \text{Relative SE}(\mathbf{c})
+    \end{equation}
+    
+    \item Find the maximum across all contrasts:
+    \begin{equation}
+        \ell_{\max} = \max_{\mathbf{c}: \sum c_i = 0} \text{Relative SE}(\mathbf{c})
+    \end{equation}
+\end{enumerate}
+
+In practice, these bounds are computed efficiently using the eigenvalues of the matrix $\hat{\boldsymbol{\Omega}}^{-1}\boldsymbol{\Omega}$:
+\begin{itemize}
+    \item $\ell_{\min} = \lambda_m^{1/2}$ (square root of smallest eigenvalue)
+    \item $\ell_{\max} = \lambda_1^{1/2}$ (square root of largest eigenvalue)
+\end{itemize}
+
+This ensures we capture the worst-case performance of FAR across \textit{all possible comparisons}, not just pairwise comparisons. For example, with error limits [0.92, 1.08], FAR may underestimate some contrast's SE by up to 8\% and overestimate others by up to 8\%.
 \section{Special Cases and Extensions}
 
 \subsection{The Three-Level Factor Case}
@@ -293,14 +327,29 @@ water_landform (5 levels):
 Error limits: [0.92, 1.08]
 \end{verbatim}
 
+\begin{figure}
+    \centering
+    \includegraphics[width=0.9\linewidth]{overviews//FAR-clustere-SE//figs/lake_beach_ref.png}
+    \caption{FAR with Lake Beach as Reference}
+    \label{fig:lakembeach_ref}
+\end{figure}
+
+\begin{figure}
+    
+    \centering
+    \includegraphics[width=0.9\linewidth]{overviews/FAR-clustere-SE/figs/lake_marsh_ref.png}
+    \caption{FAR with Lake Marsh as Reference}
+    \label{fig:lakemarsh_ref}
+\end{figure}
+
 Interpretation:
 \begin{itemize}
-    \item All water types except lake beach increase malaria risk
     \item Error limits show $\pm 8\%$ accuracy → acceptable
     \item Rice paddy has high uncertainty (likely small sample)
+    \item A visual plot of the FAR estimates shows that basically choosing the Reference category just shifts the vertical line \autoref{fig:lakembeach_ref} and \autoref{fig:lakemarsh_ref}
 \end{itemize}
 
-\section{Q\&A: Common Questions About FAR}
+\section{FAQs about FARs}
 
 \subsection{Q1: When does FAR not work well?}
 
@@ -390,18 +439,25 @@ Check by examining off-diagonal variation:
 
 \subsection{Decision Framework}
 
-\begin{center}
-\begin{tabular}{@{}lll@{}}
-\toprule
-Factor Levels & Error Limits & Recommendation \\
-\midrule
-3 levels & [1.00, 1.00] & Use FAR confidently \\
-4+ levels & Within $\pm 5\%$ & Excellent - proceed \\
-4+ levels & Within $\pm 10\%$ & Acceptable - note limitations \\
-4+ levels & Beyond $\pm 10\%$ & Consider alternatives \\
-\bottomrule
+\begin{table}[h]
+\centering
+\caption{Coverage probabilities of nominal 95 per cent confidence intervals.}
+\begin{tabular}{cc}
+\hline
+Relative error in length (\%) & Coverage probability (\%) \\
+\hline
+$-20$ & 88.3 \\
+$-10$ & 92.2 \\
+$-5$ & 93.7 \\
+0 & 95.0 \\
+$+5$ & 96.0 \\
+$+10$ & 96.9 \\
+$+20$ & 98.1 \\
+\hline
 \end{tabular}
-\end{center}
+\end{table}
+
+As shown in the table above (adapted from Plummer, 2004), when making the decision about adequacy of the FAR method consider the problem at hand. As a rule of thumb underestimation of the standard error (less conservative estimates, narrower confidence intervals) is probably worse in many cases than being more conservative (overestimation, positive relativ error length)
 
 \subsection{Best Practices}
 
