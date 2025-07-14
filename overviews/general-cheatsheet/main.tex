@@ -6,7 +6,9 @@
 \usepackage{listings}
 \usepackage{color}
 \usepackage{graphicx}
-
+\usepackage{pdflscape}  % Add this to your preamble
+\usepackage{afterpage}  % Add this to your preamble
+\usepackage{tabularx}
 % Define theorem environments
 \newtheorem{definition}{Definition}
 \newtheorem{theorem}{Theorem}
@@ -15,6 +17,7 @@
 \newtheorem{proposition}{Proposition}
 \newtheorem{assumption}{Assumption}
 \newtheorem{remark}{Remark}
+\newtheorem{example}{Example}
 % Define R code style
 \definecolor{dkgreen}{rgb}{0,0.6,0}
 \definecolor{gray}{rgb}{0.5,0.5,0.5}
@@ -260,6 +263,7 @@ We can write:
 for some matrix $\mathbf{D} \in \mathbb{R}^{p \times N}$.
 
 From the unbiasedness condition:
+
 \begin{align}
 \mathbf{C}\mathbf{X} &= [(\mathbf{X}^T\mathbf{X})^{-1}\mathbf{X}^T + \mathbf{D}]\mathbf{X} \\
 &= \mathbf{I}_p + \mathbf{D}\mathbf{X} = \mathbf{I}_p
@@ -3129,7 +3133,7 @@ This weight tells us how much to trust the group's data. If we are very certain 
 
 Now, let's connect this to the spline analogy. A penalized spline can be formally represented as a random effect model. Think back to the boxplots: if you wanted to draw a flexible line connecting the village means, and the true between-village variance ($\tau^2$) is high, the line would need to be very ``wiggly'' to capture these real differences.
 
-Your intuition here is correct. This corresponds to a \emph{small} smoothing parameter $\lambda$. The relationship is:
+ This corresponds to a \emph{small} smoothing parameter $\lambda$. The relationship is:
 
 \begin{equation*}
 \lambda \propto \frac{\sigma^2}{\tau^2} \quad (\text{lambda is proportional to the ratio of within-variance to between-variance})
@@ -3587,6 +3591,573 @@ where:
     \item Pointwise confidence bands incorporate both fixed and random uncertainty
 \end{itemize}
 \end{proposition}
+
+\section{Model Diagnostics and Inference}
+
+\subsection{Residual Analysis}
+
+\subsubsection{Types of Residuals}
+
+\begin{definition}[Residuals in Mixed Models]
+For mixed models, we distinguish between residuals at different levels:
+\begin{align}
+\text{Marginal residuals}: & \quad \mathbf{r}_m = \mathbf{y} - \mathbf{X}\hat{\boldsymbol{\beta}} \\
+\text{Conditional residuals}: & \quad \mathbf{r}_c = \mathbf{y} - \mathbf{X}\hat{\boldsymbol{\beta}} - \mathbf{Z}\hat{\mathbf{u}} \\
+\text{Random effects}: & \quad \hat{\mathbf{u}} \text{ (predictions of random deviations)}
+\end{align}
+\end{definition}
+
+\begin{theorem}[Properties of Residuals]
+Under the correct model:
+\begin{align}
+E[\mathbf{r}_m] &= \mathbf{0}, \quad \text{Var}[\mathbf{r}_m] = \mathbf{V} - \mathbf{X}(\mathbf{X}^T\mathbf{V}^{-1}\mathbf{X})^{-1}\mathbf{X}^T \\
+E[\mathbf{r}_c] &= \mathbf{0}, \quad \text{Var}[\mathbf{r}_c] = \mathbf{R} - \mathbf{Q}
+\end{align}
+where $\mathbf{Q}$ accounts for uncertainty in predicting $\mathbf{u}$.
+\end{theorem}
+
+\begin{definition}[Standardized Residuals]
+To account for heterogeneous variances:
+\begin{align}
+\text{Standardized marginal}: & \quad r_{m,i}^{std} = \frac{r_{m,i}}{\sqrt{\hat{V}_{ii}(1-h_{ii})}} \\
+\text{Standardized conditional}: & \quad r_{c,i}^{std} = \frac{r_{c,i}}{\hat{\sigma}\sqrt{1-h_{ii}^*}}
+\end{align}
+where $h_{ii}$ and $h_{ii}^*$ are leverage values from marginal and conditional models.
+\end{definition}
+
+\begin{remark}[Interpretation of Different Residuals]
+\begin{itemize}
+    \item \textbf{Marginal residuals}: Check overall model fit, detect systematic patterns
+    \item \textbf{Conditional residuals}: Check within-cluster assumptions, homoscedasticity
+    \item \textbf{Random effects}: Check normality assumption, identify outlying clusters
+\end{itemize}
+\end{remark}
+
+\begin{definition}[Residuals for GLMMs]
+For GLMMs, we additionally have:
+\begin{align}
+\text{Pearson residuals}: & \quad r_{P,ij} = \frac{y_{ij} - \hat{\mu}_{ij}}{\sqrt{V(\hat{\mu}_{ij})}} \\
+\text{Deviance residuals}: & \quad r_{D,ij} = \text{sign}(y_{ij} - \hat{\mu}_{ij})\sqrt{2[l(y_{ij};y_{ij}) - l(y_{ij};\hat{\mu}_{ij})]}
+\end{align}
+where $l(y;\mu)$ is the log-likelihood contribution.
+\end{definition}
+
+\subsubsection{Diagnostic Plots}
+
+\begin{proposition}[Key Diagnostic Plots]
+\begin{enumerate}
+    \item \textbf{Residuals vs Fitted}: 
+    \begin{itemize}
+        \item Plot $r_{c,i}^{std}$ vs $\hat{y}_i$ for LMMs
+        \item Plot Pearson residuals vs $\hat{\eta}_i$ for GLMMs
+        \item Check for: patterns, heteroscedasticity
+    \end{itemize}
+    
+    \item \textbf{Q-Q Plots}:
+    \begin{itemize}
+        \item Conditional residuals: $r_{c,i}^{std}$ vs normal quantiles
+        \item Random effects: $\hat{u}_j$ vs normal quantiles for each level
+        \item Check for: normality, outliers
+    \end{itemize}
+    
+    \item \textbf{Scale-Location Plot}:
+    \begin{itemize}
+        \item Plot $\sqrt{|r_{c,i}^{std}|}$ vs fitted values
+        \item Check for: heteroscedasticity patterns
+    \end{itemize}
+    
+    \item \textbf{Cluster-Level Diagnostics}:
+    \begin{itemize}
+        \item Caterpillar plots of $\hat{u}_j$ with confidence intervals
+        \item Check for: outlying clusters, shrinkage patterns
+    \end{itemize}
+\end{enumerate}
+\end{proposition}
+
+\subsection{Hypothesis Testing}
+
+\subsubsection{Wald Tests}
+
+\begin{definition}[Wald Test Statistic]
+For testing $H_0: \mathbf{L}\boldsymbol{\beta} = \mathbf{c}$ where $\mathbf{L}$ is $r \times p$:
+\begin{equation}
+W = (\mathbf{L}\hat{\boldsymbol{\beta}} - \mathbf{c})^T[\mathbf{L}\hat{\mathbf{V}}_{\beta}\mathbf{L}^T]^{-1}(\mathbf{L}\hat{\boldsymbol{\beta}} - \mathbf{c})
+\end{equation}
+where $\hat{\mathbf{V}}_{\beta} = (\mathbf{X}^T\hat{\mathbf{V}}^{-1}\mathbf{X})^{-1}$.
+\end{definition}
+
+\begin{theorem}[Asymptotic Distribution]
+Under $H_0$ and regularity conditions:
+\begin{equation}
+W \xrightarrow{d} \chi^2_r
+\end{equation}
+For finite samples with LMMs, an F-approximation is often used:
+\begin{equation}
+F = W/r \sim F_{r,\nu}
+\end{equation}
+where $\nu$ = approximate denominator degrees of freedom.
+\end{theorem}
+
+\begin{remark}[Degrees of Freedom Approximations]
+Several methods exist for $\nu$:
+\begin{itemize}
+    \item \textbf{Containment}: $\nu = n_{\text{lowest}} - p_{\text{lowest}}$
+    \item \textbf{Satterthwaite}: Complex function of variance components
+    \item \textbf{Kenward-Roger}: Includes finite-sample corrections
+\end{itemize}
+\end{remark}
+
+\subsubsection{Likelihood Ratio Tests}
+
+\begin{definition}[LRT for Nested Models]
+For models $M_0 \subset M_1$:
+\begin{equation}
+LRT = -2[\ell_0 - \ell_1] = -2\log\left(\frac{L_0}{L_1}\right)
+\end{equation}
+\end{definition}
+
+\begin{theorem}[LRT Distribution]
+\textbf{Case 1: Testing fixed effects (same variance structure)}
+\begin{equation}
+LRT \xrightarrow{d} \chi^2_{df}
+\end{equation}
+where $df = \dim(\boldsymbol{\beta}_1) - \dim(\boldsymbol{\beta}_0)$.
+
+\textbf{Case 2: Testing variance components}
+The distribution is a mixture of $\chi^2$ distributions when testing on the boundary (e.g., $H_0: \tau^2 = 0$).
+\end{theorem}
+
+\begin{remark}[Boundary Issues]
+When testing $H_0: \tau^2 = 0$:
+\begin{itemize}
+    \item The null hypothesis is on the boundary of parameter space
+    \item Standard $\chi^2$ theory doesn't apply
+    \item Distribution is typically $0.5\chi^2_0 + 0.5\chi^2_1$ (50:50 mixture)
+    \item Conservative approach: Use $\chi^2_1$ (gives larger p-values)
+\end{itemize}
+\end{remark}
+
+\begin{proposition}[REML vs ML for LRT]
+\begin{itemize}
+    \item \textbf{Testing fixed effects}: Must use ML (not REML)
+    \item \textbf{Testing variance components}: Can use REML if fixed effects are same
+    \item \textbf{Model comparison}: Only valid when models are nested
+\end{itemize}
+\end{proposition}
+
+\subsubsection{Parametric Bootstrap Tests}
+
+\begin{definition}[Parametric Bootstrap for Mixed Models]
+\begin{enumerate}
+    \item Fit model under $H_0$: obtain $\hat{\boldsymbol{\beta}}_0$, $\hat{\boldsymbol{\theta}}_0$
+    \item For $b = 1, \ldots, B$:
+    \begin{enumerate}
+        \item Generate $\mathbf{u}^{(b)} \sim \mathcal{N}(\mathbf{0}, \hat{\mathbf{G}}_0)$
+        \item Generate $\mathbf{y}^{(b)} = \mathbf{X}\hat{\boldsymbol{\beta}}_0 + \mathbf{Z}\mathbf{u}^{(b)} + \boldsymbol{\epsilon}^{(b)}$
+        \item Fit both models to $\mathbf{y}^{(b)}$, compute $LRT^{(b)}$
+    \end{enumerate}
+    \item P-value $= \frac{1}{B}\sum_{b=1}^B I(LRT^{(b)} \geq LRT_{obs})$
+\end{enumerate}
+\end{definition}
+
+\begin{remark}[When to Use Bootstrap]
+Bootstrap is particularly useful for:
+\begin{itemize}
+    \item Small samples
+    \item Testing variance components
+    \item Non-standard hypotheses
+    \item When asymptotic theory is questionable
+\end{itemize}
+\end{remark}
+
+\subsection{Model Selection}
+
+\begin{definition}[Information Criteria]
+For model with likelihood $L$ and $p$ parameters:
+\begin{align}
+\text{AIC} &= -2\log L + 2p \\
+\text{BIC} &= -2\log L + p\log(n) \\
+\text{cAIC} &= -2\log L + 2p + \frac{2p(p+1)}{n-p-1}
+\end{align}
+\end{definition}
+
+\begin{remark}[Counting Parameters in Mixed Models]
+For mixed models, $p$ includes:
+\begin{itemize}
+    \item All fixed effects parameters
+    \item All variance components (including covariances)
+    \item For AIC: Some debate about counting variance components
+    \item Conservative: Count all parameters
+\end{itemize}
+\end{remark}
+
+\begin{definition}[Conditional AIC]
+For mixed models, Vaida and Blanchard (2005) propose:
+\begin{equation}
+\text{cAIC} = -2\log L(\hat{\boldsymbol{\beta}}, \hat{\boldsymbol{\theta}}|\mathbf{y}) + 2\rho
+\end{equation}
+where $\rho = \text{tr}(\mathbf{H})$ is the effective degrees of freedom, with $\mathbf{H}$ the hat matrix from the marginal model.
+\end{definition}
+
+\begin{theorem}[Model Selection Guidelines]
+\begin{itemize}
+    \item \textbf{AIC}: Selects model with best predictive performance
+    \item \textbf{BIC}: Selects "true" model (if it exists) as $n \to \infty$
+    \item \textbf{Difference of 2}: Weak evidence for better model
+    \item \textbf{Difference of 5-10}: Strong evidence
+    \item \textbf{Difference > 10}: Very strong evidence
+\end{itemize}
+\end{theorem}
+
+\subsection{Inference for Variance Components}
+
+\begin{proposition}[Challenges in Variance Component Inference]
+\begin{enumerate}
+    \item \textbf{Non-negative constraint}: $\tau^2 \geq 0$
+    \item \textbf{Non-normal sampling distribution}: Especially for small clusters
+    \item \textbf{Correlation with fixed effects}: Affects standard errors
+\end{enumerate}
+\end{proposition}
+
+\begin{definition}[Profile Likelihood CI for Variance Components]
+For parameter $\tau^2$:
+\begin{enumerate}
+    \item Define profile likelihood: $\ell_p(\tau^2) = \max_{\boldsymbol{\beta}} \ell(\boldsymbol{\beta}, \tau^2)$
+    \item Find values where $-2[\ell_p(\tau^2) - \ell_p(\hat{\tau}^2)] = \chi^2_{1,1-\alpha}$
+    \item These give $(1-\alpha)$ confidence interval
+\end{enumerate}
+\end{definition}
+
+\begin{remark}[Bootstrap Confidence Intervals]
+For variance components, bootstrap CIs often perform better:
+\begin{itemize}
+    \item \textbf{Percentile method}: Use quantiles of bootstrap distribution
+    \item \textbf{BCa method}: Bias-corrected and accelerated
+    \item \textbf{Parametric bootstrap}: Generally preferred for mixed models
+\end{itemize}
+\end{remark}
+
+\subsection{Diagnostics for Model Assumptions}
+
+\begin{theorem}[Testing Random Effects Distribution]
+To test normality of random effects:
+\begin{enumerate}
+    \item \textbf{Formal tests}: Shapiro-Wilk on $\hat{\mathbf{u}}$
+    \item \textbf{Graphical}: Q-Q plots by random effect level
+    \item \textbf{Robust alternatives}: Consider t-distributed random effects
+\end{enumerate}
+\end{theorem}
+
+\begin{definition}[Influence Diagnostics]
+\textbf{Cook's Distance for clusters}:
+\begin{equation}
+D_j = \frac{(\hat{\boldsymbol{\beta}} - \hat{\boldsymbol{\beta}}_{(-j)})^T\mathbf{X}^T\mathbf{V}^{-1}\mathbf{X}(\hat{\boldsymbol{\beta}} - \hat{\boldsymbol{\beta}}_{(-j)})}{p}
+\end{equation}
+where $\hat{\boldsymbol{\beta}}_{(-j)}$ is the estimate without cluster $j$.
+\end{definition}
+
+\begin{remark}[Diagnostic Strategy]
+\begin{enumerate}
+    \item Check conditional residuals for within-cluster assumptions
+    \item Check marginal residuals for overall model adequacy
+    \item Examine random effects for distributional assumptions
+    \item Use influence measures to identify influential clusters
+    \item Consider robust methods if assumptions are violated
+\end{enumerate}
+\end{remark}
+
+\subsection{Common Statistical Tests in Epidemiology}
+
+\subsubsection{Tests for Regression Coefficients}
+
+\begin{definition}[t-test for Individual Coefficients]
+The most common test for regression coefficients tests $H_0: \beta_j = 0$:
+\begin{equation}
+t = \frac{\hat{\beta}_j - 0}{\text{SE}(\hat{\beta}_j)} = \frac{\hat{\beta}_j}{\sqrt{\hat{\sigma}^2[(\mathbf{X}^T\mathbf{X})^{-1}]_{jj}}}
+\end{equation}
+Under $H_0$: $t \sim t_{n-p}$ (Student's t-distribution).
+\end{definition}
+
+\begin{remark}[Interpretation in Epidemiology]
+\begin{itemize}
+    \item \textbf{Linear regression}: Tests if exposure has any linear association with outcome
+    \item \textbf{Logistic regression}: Tests if exposure affects log-odds (OR $\neq$ 1)
+    \item \textbf{Cox regression}: Tests if exposure affects hazard (HR $\neq$ 1)
+    \item P-value: Probability of seeing this strong an association by chance alone
+\end{itemize}
+\end{remark}
+
+\begin{proposition}[Relationship to Confidence Intervals]
+The t-test is equivalent to checking if the $(1-\alpha)$ CI excludes 0:
+\begin{equation}
+\text{CI}: \hat{\beta}_j \pm t_{n-p,1-\alpha/2} \cdot \text{SE}(\hat{\beta}_j)
+\end{equation}
+\begin{itemize}
+    \item If CI excludes 0 $\Leftrightarrow$ $|t| > t_{n-p,1-\alpha/2}$ $\Leftrightarrow$ p-value $< \alpha$
+    \item Width of CI indicates precision of estimate
+\end{itemize}
+\end{proposition}
+
+\subsubsection{Chi-Square Tests}
+
+\begin{definition}[Pearson's Chi-Square Test]
+For a contingency table with observed counts $O_{ij}$ and expected counts $E_{ij}$:
+\begin{equation}
+\chi^2 = \sum_{i=1}^r \sum_{j=1}^c \frac{(O_{ij} - E_{ij})^2}{E_{ij}}
+\end{equation}
+Under $H_0$ (independence): $\chi^2 \sim \chi^2_{(r-1)(c-1)}$.
+\end{definition}
+
+\begin{example}[2×2 Table in Epidemiology]
+For exposure-disease association:
+\begin{center}
+\begin{tabular}{|l|c|c|c|}
+\hline
+ & Disease & No Disease & Total \\
+\hline
+Exposed & $a$ & $b$ & $a+b$ \\
+Not Exposed & $c$ & $d$ & $c+d$ \\
+\hline
+Total & $a+c$ & $b+d$ & $n$ \\
+\hline
+\end{tabular}
+\end{center}
+
+Expected counts under independence:
+\begin{equation}
+E_{11} = \frac{(a+b)(a+c)}{n}, \quad E_{12} = \frac{(a+b)(b+d)}{n}, \text{ etc.}
+\end{equation}
+
+Chi-square statistic:
+\begin{equation}
+\chi^2 = \frac{n(ad-bc)^2}{(a+b)(c+d)(a+c)(b+d)}
+\end{equation}
+\end{example}
+
+\begin{remark}[Continuity Correction]
+For 2×2 tables with small expected counts, Yates' correction:
+\begin{equation}
+\chi^2_{\text{Yates}} = \frac{n(|ad-bc| - n/2)^2}{(a+b)(c+d)(a+c)(b+d)}
+\end{equation}
+Use when any expected count $< 5$.
+\end{remark}
+
+\begin{theorem}[Relationship to Other Tests]
+For 2×2 tables:
+\begin{itemize}
+    \item $\chi^2 = z^2$ where $z$ is from two-proportion z-test
+    \item Equivalent to logistic regression with binary predictor
+    \item Related to Fisher's exact test (uses $\chi^2$ distribution as approximation)
+\end{itemize}
+\end{theorem}
+
+\subsubsection{Wilcoxon Rank-Sum and Mann-Whitney U Tests}
+
+\begin{definition}[Wilcoxon Rank-Sum Test]
+For two groups with sizes $n_1$ and $n_2$:
+\begin{enumerate}
+    \item Pool all observations and rank from 1 to $N = n_1 + n_2$
+    \item Calculate $W_1 = \sum_{i \in \text{Group 1}} R_i$ (sum of ranks in group 1)
+    \item Test statistic: $W = W_1$ or $W = \min(W_1, W_2)$
+\end{enumerate}
+\end{definition}
+
+\begin{definition}[Mann-Whitney U Test]
+Count the number of pairs $(X_i, Y_j)$ where $X_i < Y_j$:
+\begin{equation}
+U_1 = \sum_{i=1}^{n_1} \sum_{j=1}^{n_2} I(X_i < Y_j)
+\end{equation}
+where $X_i$ are observations from group 1, $Y_j$ from group 2.
+\end{definition}
+
+\begin{theorem}[Equivalence of Wilcoxon and Mann-Whitney]
+The two tests are exactly equivalent:
+\begin{equation}
+U_1 = W_1 - \frac{n_1(n_1+1)}{2}
+\end{equation}
+
+\textbf{Intuitive explanation}:
+\begin{itemize}
+    \item $W_1$ = sum of ranks in group 1
+    \item $\frac{n_1(n_1+1)}{2}$ = sum of ranks if group 1 had the $n_1$ smallest values
+    \item $U_1$ = excess rank sum = number of "inversions"
+    \item Both measure how much group 1 tends to have larger values than group 2
+\end{itemize}
+\end{theorem}
+
+\begin{proof}[Intuitive Proof]
+Consider the contribution to $W_1$ from each observation $X_i$:
+\begin{itemize}
+    \item Rank of $X_i$ = (number of $X$'s $\leq X_i$) + (number of $Y$'s $< X_i$)
+    \item Sum over all $X_i$: $W_1 = \frac{n_1(n_1+1)}{2} + \sum_i \sum_j I(Y_j < X_i)$
+    \item But $\sum_i \sum_j I(Y_j < X_i) = n_1 n_2 - U_1$
+    \item Therefore: $U_1 = W_1 - \frac{n_1(n_1+1)}{2}$
+\end{itemize}
+\end{proof}
+
+\begin{remark}[Interpretation]
+\begin{itemize}
+    \item \textbf{Null hypothesis}: $P(X > Y) = 0.5$ (stochastic equality)
+    \item \textbf{Alternative}: $P(X > Y) \neq 0.5$ (location shift or more general)
+    \item \textbf{Effect size}: $P(X > Y) = U_1/(n_1 n_2)$ (probability of superiority)
+    \item \textbf{Not just medians}: Tests entire distribution shift
+\end{itemize}
+\end{remark}
+
+\subsubsection{Normality Tests}
+
+\begin{definition}[Shapiro-Wilk Test]
+Tests $H_0$: data come from normal distribution
+\begin{equation}
+W = \frac{\left(\sum_{i=1}^n a_i x_{(i)}\right)^2}{\sum_{i=1}^n (x_i - \bar{x})^2}
+\end{equation}
+where:
+\begin{itemize}
+    \item $x_{(i)}$ = ordered statistics
+    \item $a_i$ = coefficients from expected values of order statistics
+    \item $W \approx 1$ suggests normality
+\end{itemize}
+\end{definition}
+
+\begin{remark}[Limitations of Shapiro-Wilk]
+\begin{enumerate}
+    \item \textbf{Sample size sensitivity}:
+    \begin{itemize}
+        \item Small $n$: Low power, fails to detect non-normality
+        \item Large $n$: Too sensitive, rejects for trivial deviations
+    \end{itemize}
+    \item \textbf{Multiple testing}: Testing many variables inflates Type I error
+    \item \textbf{Not robust}: Sensitive to outliers
+    \item \textbf{Limited information}: Only gives yes/no answer
+\end{enumerate}
+\end{remark}
+
+\begin{definition}[Moments-Based Assessment]
+Instead of formal tests, examine distributional characteristics:
+\begin{align}
+\text{Skewness} &= \frac{\frac{1}{n}\sum_{i=1}^n (x_i - \bar{x})^3}{\left[\frac{1}{n}\sum_{i=1}^n (x_i - \bar{x})^2\right]^{3/2}} \\
+\text{Kurtosis} &= \frac{\frac{1}{n}\sum_{i=1}^n (x_i - \bar{x})^4}{\left[\frac{1}{n}\sum_{i=1}^n (x_i - \bar{x})^2\right]^2} - 3
+\end{align}
+\end{definition}
+
+\begin{proposition}[Why Kurtosis Analysis is Often Better]
+\begin{enumerate}
+    \item \textbf{Quantitative information}:
+    \begin{itemize}
+        \item Skewness: Direction and degree of asymmetry
+        \item Kurtosis: Tail heaviness (outlier proneness)
+        \item Normal: Skewness = 0, Kurtosis = 0
+    \end{itemize}
+    
+    \item \textbf{Robustness guidance}:
+    \begin{itemize}
+        \item $|\text{Skewness}| < 1$: Mild, most methods robust
+        \item $|\text{Skewness}| > 2$: Severe, consider transformation
+        \item $\text{Kurtosis} > 3$: Heavy tails, consider robust methods
+    \end{itemize}
+    
+    \item \textbf{Sample size invariant}: Thresholds don't depend on $n$
+    
+    \item \textbf{Visual confirmation}: Combine with Q-Q plots
+\end{enumerate}
+\end{proposition}
+
+\begin{remark}[Practical Recommendations for Normality]
+\begin{enumerate}
+    \item \textbf{Don't over-rely on tests}: Shapiro-Wilk $p < 0.05$ doesn't mean analysis fails
+    \item \textbf{Consider context}:
+    \begin{itemize}
+        \item Linear regression: Residual normality matters, not variable normality
+        \item t-tests: Robust to moderate non-normality if $n > 30$
+        \item Mixed models: Random effects normality more important
+    \end{itemize}
+    \item \textbf{Use multiple approaches}:
+    \begin{itemize}
+        \item Visual: Q-Q plots, histograms
+        \item Descriptive: Skewness, kurtosis
+        \item Formal tests: As supplementary evidence only
+    \end{itemize}
+\end{enumerate}
+\end{remark}
+
+\subsubsection{Tests for Paired Data}
+
+\begin{definition}[Paired t-test]
+For paired observations $(X_i, Y_i)$, test on differences $D_i = X_i - Y_i$:
+\begin{equation}
+t = \frac{\bar{D} - 0}{s_D/\sqrt{n}} = \frac{\bar{D}\sqrt{n}}{s_D}
+\end{equation}
+where $s_D$ is the sample standard deviation of differences.
+\end{definition}
+
+\begin{definition}[Wilcoxon Signed-Rank Test]
+Non-parametric alternative for paired data:
+\begin{enumerate}
+    \item Calculate $D_i = X_i - Y_i$ for each pair
+    \item Rank $|D_i|$ from 1 to $n$
+    \item Sum ranks for positive differences: $W^+ = \sum_{D_i > 0} R_i$
+    \item Compare to null distribution
+\end{enumerate}
+\end{definition}
+
+\begin{remark}[Choice Between Tests]
+\begin{center}
+\begin{tabular}{|l|l|l|}
+\hline
+\textbf{Scenario} & \textbf{Recommended Test} & \textbf{Reason} \\
+\hline
+Normal differences & Paired t-test & Most powerful \\
+Symmetric, non-normal & Wilcoxon signed-rank & Robust, nearly as powerful \\
+Skewed differences & Transform or Wilcoxon & t-test assumptions violated \\
+Ordinal outcomes & Wilcoxon signed-rank & t-test inappropriate \\
+\hline
+\end{tabular}
+\end{center}
+\end{remark}
+
+\subsubsection{Multiple Testing Corrections}
+
+\begin{definition}[Family-Wise Error Rate (FWER)]
+Probability of at least one Type I error among $m$ tests:
+\begin{equation}
+\text{FWER} = P(\text{at least one false positive}) = 1 - (1-\alpha)^m \approx m\alpha
+\end{equation}
+for independent tests.
+\end{definition}
+
+\begin{theorem}[Common Corrections]
+\begin{enumerate}
+    \item \textbf{Bonferroni}: Use $\alpha' = \alpha/m$ for each test
+    \begin{itemize}
+        \item Controls FWER $\leq \alpha$
+        \item Conservative (especially for correlated tests)
+    \end{itemize}
+    
+    \item \textbf{Holm-Bonferroni}: Sequential procedure
+    \begin{itemize}
+        \item Order p-values: $p_{(1)} \leq p_{(2)} \leq \cdots \leq p_{(m)}$
+        \item Reject $H_{(i)}$ if $p_{(i)} \leq \alpha/(m-i+1)$
+        \item More powerful than Bonferroni
+    \end{itemize}
+    
+    \item \textbf{False Discovery Rate (FDR) - Benjamini-Hochberg}:
+    \begin{itemize}
+        \item Controls expected proportion of false positives
+        \item Find largest $i$ such that $p_{(i)} \leq \frac{i}{m}\alpha$
+        \item Reject $H_{(1)}, \ldots, H_{(i)}$
+    \end{itemize}
+\end{enumerate}
+\end{theorem}
+
+\begin{remark}[When to Use Each]
+\begin{itemize}
+    \item \textbf{Bonferroni}: Few tests ($m < 5$), critical decisions
+    \item \textbf{Holm}: Moderate number of tests, need FWER control
+    \item \textbf{FDR}: Many tests ($m > 20$), exploratory analysis
+    \item \textbf{No correction}: Pre-specified primary outcome only
+\end{itemize}
+\end{remark}
+
 
 
 

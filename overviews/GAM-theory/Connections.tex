@@ -182,4 +182,33 @@ Penalized Splines & Spline coefficients $\mathbf{u}$ & $\frac{\sigma^2}{\tau^2}$
     \item Empirical Bayes connects the frequentist (REML/ML estimation in mixed models) and Bayesian worlds by using the data to inform the prior.
 \end{enumerate}
 
+\subsection*{Connection to Bayesian Inference}
+
+The GAMM formulation can be shown to have a direct Bayesian interpretation. The penalized log-likelihood:
+
+\begin{equation}
+\ell_p(\boldsymbol{\theta}) = \sum_{i=1}^{n} \left[ y_i \eta_i - \log(1 + e^{\eta_i}) \right] - \frac{1}{2}\boldsymbol{\alpha}^T \mathbf{S}_{\text{adapt}} \boldsymbol{\alpha} - \frac{\lambda_v}{2} \sum_{v=1}^{V} b_v^2
+\end{equation}
+
+corresponds to the log-posterior under the following prior specification:
+
+\begin{equation}
+p(\boldsymbol{\beta}, \boldsymbol{\alpha}, \mathbf{b} | \boldsymbol{\lambda}) \propto \exp\left(-\frac{1}{2}\boldsymbol{\alpha}^T \mathbf{S}_{\text{adapt}} \boldsymbol{\alpha} - \frac{\lambda_v}{2} \sum_{v=1}^{V} b_v^2\right)
+\end{equation}
+
+This implies:
+\begin{itemize}
+    \item $\boldsymbol{\beta} \propto 1$ (improper uniform prior on fixed effects)
+    \item $\boldsymbol{\alpha} | \boldsymbol{\lambda} \sim \mathcal{N}(0, \mathbf{S}_{\text{adapt}}^{-})$ where $\mathbf{S}_{\text{adapt}}^{-}$ is the pseudoinverse
+    \item $b_v | \lambda_v \sim \mathcal{N}(0, \lambda_v^{-1})$ independently for each village
+\end{itemize}
+
+The prior is improper because:
+\begin{enumerate}
+    \item The uniform prior on $\boldsymbol{\beta}$ does not integrate to a finite value over $\mathbb{R}^p$
+    \item The penalty matrix $\mathbf{S}_{\text{adapt}}$ is rank-deficient, meaning some basis functions (typically those in the nullspace corresponding to polynomial terms) are unpenalized, leading to infinite variance components
+\end{enumerate}
+
+The empirical Bayes approach estimates $\boldsymbol{\lambda}$ via REML/ML, treating it as fixed, while full Bayes would place hyperpriors on $\boldsymbol{\lambda}$.
+
 \end{document}
